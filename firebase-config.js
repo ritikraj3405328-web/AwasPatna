@@ -1,10 +1,10 @@
 // firebase-config.js (FOR USER APP: awaspatna-app)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { 
-  getFirestore, collection, doc, onSnapshot, addDoc, setDoc, query, where 
+  getFirestore, collection, doc, onSnapshot, addDoc, setDoc, deleteDoc, getDoc, query, where 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { 
-  getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut 
+  getAuth, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -20,9 +20,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 auth.languageCode = 'en';
 
 export { 
-  db, auth, collection, doc, onSnapshot, addDoc, setDoc, query, where,
+  db, auth, googleProvider, signInWithPopup,
+  collection, doc, onSnapshot, addDoc, setDoc, deleteDoc, getDoc, query, where,
   RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut 
 };
