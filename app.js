@@ -1,10 +1,9 @@
 import { 
-  db, auth, collection, doc, onSnapshot, addDoc, setDoc, query, where,
+  db, auth, googleProvider, signInWithPopup,
+  collection, doc, onSnapshot, addDoc, setDoc, deleteDoc, getDoc, query, where,
   RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut 
 } from "./firebase-config.js";
-import { deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// PATNA KE SAARE 38+ PRAMUKH AREAS & CITIES
 const LOCS = [
   'All Patna', 'Boring Road', 'Kankarbagh', 'Rajendra Nagar', 'Patliputra', 
   'Bailey Road', 'Danapur', 'Kumhrar', 'Ashok Rajpath', 'Fraser Road', 
@@ -52,17 +51,15 @@ const esc = str => String(str ?? '').replace(/[&<>"']/g, m => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[m]));
 
-// 10-digit Indian Mobile Number Normalizer -> returns '91XXXXXXXXXX'
 function formatWhatsAppAndCallPhone(raw) {
   const digits = String(raw || '').replace(/\D/g, '');
-  if (digits.length >= 10) {
-    return '91' + digits.slice(-10);
-  }
+  if (digits.length >= 10) return '91' + digits.slice(-10);
   return '';
 }
 
 function toast(m) {
   const t = $('#toast');
+  if (!t) return;
   t.textContent = m;
   t.style.opacity = 1;
   t.style.transform = 'translate(-50%,-8px)';
@@ -70,7 +67,47 @@ function toast(m) {
   toast.x = setTimeout(() => {
     t.style.opacity = 0;
     t.style.transform = 'translate(-50%,0)';
-  }, 2500);
+  }, 2600);
+}
+
+/* --- 0. 7-SECOND STRICT AUTO-REMOVE INSTALL POPUP --- */
+let deferredInstallPrompt = null;
+const installPopup = $('#userInstallPopup');
+
+function removeInstallPopup() {
+  if (!installPopup) return;
+  installPopup.style.opacity = '0';
+  installPopup.style.pointerEvents = 'none';
+  setTimeout(() => installPopup.remove(), 300);
+}
+
+// Hide & remove automatically after exactly 7 seconds (7000ms)
+const installTimer = setTimeout(removeInstallPopup, 7000);
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+
+if ($('#popupCloseBtn')) {
+  $('#popupCloseBtn').onclick = () => {
+    clearTimeout(installTimer);
+    removeInstallPopup();
+  };
+}
+
+if ($('#popupInstallBtn')) {
+  $('#popupInstallBtn').onclick = async () => {
+    clearTimeout(installTimer);
+    removeInstallPopup();
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+    } else {
+      toast('Chrome ke 3-dot menu (⋮) se "Add to Home screen / Install App" dabayein');
+    }
+  };
 }
 
 /* --- 1. PUSH NOTIFICATION PERMISSION SYSTEM --- */
@@ -95,7 +132,7 @@ async function askNotificationPermission() {
     if (perm === 'granted') {
       localStorage.setItem('ap_notif_granted', 'true');
       updateNotifBadge();
-      toast('Notifications Chalu Ho Gayi ✓ (Allow All Time)');
+      toast('Notifications Chalu Ho Gayi ✓');
       sendLocalNotification('AwasPatna Alerts Active ✓', 'Ab Patna mein naye Room, Flat ya Plot aate hi aapko turant khabar milegi!');
       if (auth.currentUser) {
         setDoc(doc(db, "users", auth.currentUser.uid), { notifEnabled: true, notifUpdatedAt: Date.now() }, { merge: true }).catch(() => {});
@@ -115,8 +152,8 @@ async function sendLocalNotification(title, body) {
     if (reg && reg.showNotification) {
       reg.showNotification(title, {
         body,
-        icon: 'https://cdn-icons-png.flaticon.com/512/619/619153.png',
-        badge: 'https://cdn-icons-png.flaticon.com/512/619/619153.png',
+        icon: './logo.svg',
+        badge: './logo.svg',
         vibrate: [200, 100, 200]
       });
     } else {
@@ -134,7 +171,7 @@ setTimeout(() => {
     $('#notifModal')?.classList.add('open');
   }
   updateNotifBadge();
-}, 4000);
+}, 8000);
 
 /* --- 2. FIXED 16:10 RATIO IMAGE AUTO-CROPPER & COMPRESSOR --- */
 function cropImageToFixedRatio(file, targetW = 800, targetH = 500, quality = 0.78) {
@@ -260,7 +297,7 @@ onSnapshot(doc(db, "settings", "config"), snap => {
   }
 }, () => {});
 
-/* --- 4. FIREBASE AUTHENTICATION & OWNER'S PERSONAL LISTINGS LISTENER --- */
+/* --- 4. FIREBASE AUTHENTICATION & OWNER'S PERSONAL LISTINGS --- */
 onAuthStateChanged(auth, async user => {
   if (myListingsUnsub) {
     myListingsUnsub();
@@ -273,9 +310,8 @@ onAuthStateChanged(auth, async user => {
     const authPhone = String(user.phoneNumber || '').replace(/\D/g, '').slice(-10);
     const savedProfile = JSON.parse(localStorage.getItem('ap_user') || 'null');
     S.userPhone = authPhone || savedProfile?.phone || '';
-    S.userName = savedProfile?.name || 'Verified Owner';
+    S.userName = savedProfile?.name || user.displayName || 'Verified Owner';
 
-    // Firestore se user ka exact naam aur phone fetch karein
     try {
       const uSnap = await getDoc(doc(db, "users", user.uid));
       if (uSnap.exists()) {
@@ -285,9 +321,12 @@ onAuthStateChanged(auth, async user => {
       }
     } catch (e) {}
 
+    if ($('#pOwnerPhone') && S.userPhone) {
+      $('#pOwnerPhone').value = S.userPhone;
+    }
+
     $('#profLbl').textContent = 'My Listings';
 
-    // Real-time listener for THIS Owner's own listings (Pending + Approved + Rejected)
     const myQuery = query(collection(db, "listings"), where("ownerUid", "==", user.uid));
     myListingsUnsub = onSnapshot(myQuery, snap => {
       const arr = [];
@@ -413,7 +452,7 @@ function renderFeat() {
   $('#feat').innerHTML = fList.map(p => `<button data-go="${esc(p.id)}" class="ft text-left text-white">${media(p)[0]}<div class="shade"></div><span class="absolute top-3 left-3 glassc rounded-full px-2.5 py-1 text-[10px] font-extrabold flex items-center gap-1">${ic('shield', '!w-3 !h-3')}Verified</span><div class="absolute bottom-3.5 left-4 right-4"><div class="hd font-extrabold text-xl">${esc(p.price)}<small class="text-xs font-semibold opacity-80">${esc(p.u)}</small></div><div class="text-[13px] font-bold leading-tight line-clamp-1">${esc(p.title)}</div><div class="text-[11px] opacity-80 mt-0.5">${esc(p.loc)}, Patna</div></div></button>`).join('');
 }
 
-/* --- 7. OWNER PERSONAL DASHBOARD (RENDERED WHEN PROFILE TAB IS ACTIVE) --- */
+/* --- 7. OWNER PERSONAL DASHBOARD --- */
 function renderOwnerDashboard() {
   if (!S.logged) {
     $('#count').textContent = 'Login Required';
@@ -421,13 +460,12 @@ function renderOwnerDashboard() {
       <div class="pc p-7 text-center">
         <div class="grad w-16 h-16 rounded-3xl mx-auto grid place-items-center shadow-lg mb-4">${ic('user', '!w-8 !h-8')}</div>
         <h3 class="hd font-extrabold text-xl">Owner Dashboard</h3>
-        <p class="text-xs mt-1.5 leading-relaxed" style="color:var(--mut)">Apni daali gayi properties dekhne, nayi property jodne ya bik chuki property ko delete karne ke liye mobile number verify karein.</p>
-        <button data-dash-login class="btn call grad w-full mt-5">Mobile Number Verify Karein</button>
+        <p class="text-xs mt-1.5 leading-relaxed" style="color:var(--mut)">Apni daali gayi properties dekhne, nayi property jodne ya bik chuki property ko delete karne ke liye Google ya OTP se login karein.</p>
+        <button data-dash-login class="btn call grad w-full mt-5">Google / Mobile Se Login Karein</button>
       </div>`;
     return;
   }
 
-  // Merge owner listings by ownerUid and also matching ownerPhone
   const myPhone10 = String(S.userPhone || '').replace(/\D/g, '').slice(-10);
   const combinedMap = new Map();
   MY_LISTINGS.forEach(item => combinedMap.set(item.id, item));
@@ -453,7 +491,7 @@ function renderOwnerDashboard() {
           <span class="grad w-12 h-12 rounded-2xl grid place-items-center hd font-extrabold text-lg shrink-0">${esc((S.userName || 'O')[0].toUpperCase())}</span>
           <div class="min-w-0">
             <h3 class="hd font-extrabold text-base truncate">${esc(S.userName || 'Verified Owner')}</h3>
-            <p class="text-xs font-bold flex items-center gap-1" style="color:var(--a)">✓ +91 ${esc(myPhone10 || 'Verified')}</p>
+            <p class="text-xs font-bold flex items-center gap-1" style="color:var(--a)">✓ ${myPhone10 ? '+91 ' + esc(myPhone10) : 'Google Verified'}</p>
           </div>
         </div>
         <button data-dash-logout class="soft px-3 py-2 rounded-xl text-xs font-extrabold shrink-0">Logout</button>
@@ -517,7 +555,7 @@ function renderOwnerDashboard() {
   `;
 }
 
-/* --- 8. MAIN FEED RENDER (100% ORIGINAL FRONTEND CARD DESIGN) --- */
+/* --- 8. MAIN FEED RENDER --- */
 function renderFeed() {
   if (S.tab === 'profile') {
     renderOwnerDashboard();
@@ -575,7 +613,7 @@ if ($('#openPolicyFooter')) $('#openPolicyFooter').onclick = openPolicy;
 if ($('#polClose')) $('#polClose').onclick = closePolicy;
 if ($('#polAccept')) $('#polAccept').onclick = () => { $('#consentChk').checked = true; closePolicy(); };
 
-/* --- 10. FIREBASE PHONE OTP MODAL --- */
+/* --- 10. DIRECT GOOGLE LOGIN + PHONE OTP MODAL --- */
 const M = $('#modal'), steps = ['#s1', '#s2', '#s3'];
 function showOtpStep(n) {
   S.otpStep = n;
@@ -598,6 +636,62 @@ function closeModal() {
 $('#mClose').onclick = closeModal;
 M.onclick = e => { if (e.target === M) closeModal(); };
 $('#phone').oninput = e => e.target.value = e.target.value.replace(/\D/g, '');
+if ($('#pOwnerPhone')) $('#pOwnerPhone').oninput = e => e.target.value = e.target.value.replace(/\D/g, '');
+
+// DIRECT GOOGLE LOGIN HANDLER (BYPASSES 10 SMS QUOTA LIMIT)
+if ($('#googleLoginBtn')) {
+  $('#googleLoginBtn').onclick = async () => {
+    const enteredName = $('#uName').value.trim();
+    const enteredPhone = $('#phone').value.trim();
+
+    if (!/^[6-9]\d{9}$/.test(enteredPhone)) {
+      $('#pErr').textContent = 'Google Login se pehle upar apna 10-digit Call/WhatsApp number zaroor bharein';
+      $('#phone').focus();
+      return;
+    }
+    if (!$('#consentChk').checked) {
+      $('#pErr').textContent = 'Aage badhne ke liye Privacy Policy & Consent box par tick karein';
+      return;
+    }
+
+    $('#pErr').textContent = 'Opening Google Login...';
+    try {
+      const res = await signInWithPopup(auth, googleProvider);
+      const user = res.user;
+      const finalName = enteredName || user.displayName || 'Verified User';
+      S.uid = user.uid;
+      S.userName = finalName;
+      S.userPhone = enteredPhone;
+      S.logged = true;
+
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        name: finalName,
+        email: user.email || '',
+        phone: enteredPhone,
+        ver: true,
+        blk: false,
+        consentGiven: true,
+        consentText: "Agreed to AwasPatna Privacy Policy, Terms & DPDP Contact Sharing (Google Auth)",
+        consentTimestamp: Date.now()
+      }, { merge: true });
+
+      localStorage.setItem('ap_user', JSON.stringify({ name: finalName, phone: enteredPhone }));
+      if ($('#pOwnerPhone')) $('#pOwnerPhone').value = enteredPhone;
+      $('#profLbl').textContent = 'My Listings';
+      $('#pErr').textContent = '';
+      showOtpStep(2);
+      toast('Google se safaltapurvak Login ho gaya ✓');
+      setTimeout(() => {
+        M.classList.remove('open');
+        if (S.after) S.after();
+        else renderFeed();
+      }, 800);
+    } catch (err) {
+      $('#pErr').textContent = 'Google Login Error: ' + (err.message || 'Popup blocked');
+    }
+  };
+}
 
 function resetRecaptcha() {
   if (window.recaptchaVerifier) {
@@ -631,7 +725,11 @@ $('#sendOtp').onclick = async () => {
     setTimeout(() => $('.otp').focus(), 350);
   } catch (err) {
     resetRecaptcha();
-    $('#pErr').textContent = err.message || 'OTP bhejne mein samasya aayi';
+    if (String(err.message).includes('billing-not-enabled') || String(err.code).includes('quota')) {
+      $('#pErr').textContent = 'Free SMS limit poori ho gayi hai! Upar "Google se Direct Login Karein" button dabayein.';
+    } else {
+      $('#pErr').textContent = err.message || 'OTP bhejne mein samasya aayi';
+    }
   }
 };
 
@@ -671,6 +769,7 @@ $('#verify').onclick = async () => {
     }, { merge: true });
 
     localStorage.setItem('ap_user', JSON.stringify({ name: S.userName, phone: verified10 }));
+    if ($('#pOwnerPhone')) $('#pOwnerPhone').value = verified10;
     $('#profLbl').textContent = 'My Listings';
     $('#oErr').textContent = '';
     showOtpStep(2);
@@ -684,24 +783,26 @@ $('#verify').onclick = async () => {
   }
 };
 
-/* --- 11. FREE LISTING SUBMISSION (BINDS REAL VERIFIED OWNER NUMBER) --- */
+/* --- 11. FREE LISTING SUBMISSION --- */
 const PM = $('#postModal');
 function openPostModal() {
   if (!S.freeAllowed) { toast('Abhi nayi listing band hai'); return; }
   $('#postErr').textContent = '';
+  if ($('#pOwnerPhone') && S.userPhone) $('#pOwnerPhone').value = S.userPhone;
   PM.classList.add('open');
   pushAppState('#post-listing');
 }
 $('#pClose').onclick = () => { PM.classList.remove('open'); if (location.hash === '#post-listing') history.back(); };
 
 $('#submitPost').onclick = async () => {
-  if (!auth.currentUser) { $('#postErr').textContent = 'Pehle mobile number verify karein'; return; }
+  if (!auth.currentUser) { $('#postErr').textContent = 'Pehle login karein'; return; }
   const title = $('#pTitle').value.trim();
   const type = $('#pType').value;
   const loc = $('#pLoc').value;
   const price = $('#pPrice').value.trim();
   const tags = $('#pTags').value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 5);
   const d = $('#pDesc').value.trim();
+  const formPhone = $('#pOwnerPhone') ? $('#pOwnerPhone').value.trim() : '';
 
   if (title.length < 3 || !price) {
     $('#postErr').textContent = 'Sahi Title aur Kiraya/Price zaroor bharein';
@@ -716,14 +817,14 @@ $('#submitPost').onclick = async () => {
     return;
   }
 
-  // Owner ka 100% asli verified mobile number nikalna
   const savedProfile = JSON.parse(localStorage.getItem('ap_user') || 'null');
   const realOwnerPhone = String(
-    auth.currentUser.phoneNumber || S.userPhone || savedProfile?.phone || ''
+    formPhone || auth.currentUser.phoneNumber || S.userPhone || savedProfile?.phone || ''
   ).replace(/\D/g, '').slice(-10);
 
-  if (realOwnerPhone.length !== 10) {
-    $('#postErr').textContent = 'Aapka mobile number verify nahi ho paya, kripya dobara login karein';
+  if (!/^[6-9]\d{9}$/.test(realOwnerPhone)) {
+    $('#postErr').textContent = 'Kripya apna sahi 10-digit Call/WhatsApp number bharein';
+    $('#pOwnerPhone')?.focus();
     return;
   }
 
@@ -741,8 +842,8 @@ $('#submitPost').onclick = async () => {
       d: (d || `${title} in ${loc}, Patna.`).slice(0, 400),
       photos,
       ownerUid: auth.currentUser.uid,
-      ownerName: S.userName || savedProfile?.name || 'Verified Owner',
-      ownerPhone: realOwnerPhone, // Direct 10-digit verified owner phone
+      ownerName: S.userName || savedProfile?.name || auth.currentUser.displayName || 'Verified Owner',
+      ownerPhone: realOwnerPhone,
       consentGiven: true,
       consentTimestamp: Date.now(),
       status: 'pending',
@@ -799,7 +900,7 @@ document.addEventListener('click', async e => {
         await deleteDoc(doc(db, "listings", delId));
         toast('Aapki listing safaltapurvak delete ho gayi ✓');
       } catch (err) {
-        toast('Delete karne ke liye Firebase Rules update karein');
+        toast('Delete karne mein samasya aayi');
       }
     }
   }
