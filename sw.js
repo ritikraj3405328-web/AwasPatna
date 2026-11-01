@@ -1,5 +1,5 @@
-const CACHE_NAME = 'awaspatna-app-v1';
-const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.json'];
+const CACHE_NAME = 'awaspatna-app-v2';
+const ASSETS = ['./', './index.html', './style.css', './app.js', './firebase-config.js', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
