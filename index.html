@@ -7,6 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>AwasPatna – Patna’s Room & Property Finder</title>
+<!-- FAST DNS & SERVER PRECONNECT -->
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <link rel="apple-touch-icon" href="logo.svg">
 <link rel="manifest" href="manifest.json">
@@ -54,7 +58,7 @@
 
 <div class="relative max-w-md mx-auto min-h-screen">
 
-  <!-- 1. CLEAN STICKY HEADER (NO CROWDING OR MIXING) -->
+  <!-- 1. CLEAN STICKY HEADER -->
   <header class="bar px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-2.5">
       <img src="logo.svg" class="w-9 h-9 rounded-xl shadow-md shrink-0" alt="AwasPatna Logo">
@@ -96,8 +100,14 @@
   </div>
 
   <main class="pb-40">
-    <div id="pills" class="noscroll flex gap-2 overflow-x-auto px-4 pt-4 pb-2"></div>
-    <div id="cats" class="noscroll flex gap-3 overflow-x-auto px-4 pt-4 pb-4"></div>
+    <!-- AREA PILLS -->
+    <div id="pills" class="noscroll flex gap-2 overflow-x-auto px-4 pt-4 pb-1.5"></div>
+
+    <!-- BUDGET / PRICE FILTER PILLS -->
+    <div id="budgetPills" class="noscroll flex gap-2 overflow-x-auto px-4 pt-1.5 pb-2"></div>
+
+    <!-- 3. CATEGORIES -->
+    <div id="cats" class="noscroll flex gap-3 overflow-x-auto px-4 pt-3 pb-4"></div>
 
     <!-- FEATURED -->
     <div class="px-4 mb-3 flex items-end justify-between"><h2 class="hd font-extrabold text-lg">Featured</h2><span class="text-xs font-bold" style="color:var(--a)">Swipe karein →</span></div>
@@ -156,10 +166,9 @@
 
         <p id="pErr" class="text-xs text-red-500 mt-1.5 min-h-[1rem]"></p>
 
-        <!-- DIRECT GOOGLE LOGIN BUTTON (NO SMS QUOTA NEEDED) -->
         <button id="googleLoginBtn" type="button" class="btn w-full !h-13 text-sm mt-1 shadow-md" style="background:#fff;color:#1f2937;border:1.5px solid #d1d5db">
           <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-          <span>Google se Direct Login Karein (Recommended)</span>
+          <span>Google se Direct Login Karein (Fast)</span>
         </button>
 
         <div class="flex items-center gap-2 my-2.5 text-[10.5px] font-bold" style="color:var(--mut)">
@@ -204,7 +213,7 @@
       <button id="pClose" class="soft w-9 h-9 rounded-full grid place-items-center"><svg class="ic !w-4 !h-4"><use href="#i-x"/></svg></button>
     </div>
 
-    <p class="text-[11px] font-bold mb-1.5" style="color:var(--mut)">PROPERTY PHOTOS (Fixed 16:10 Ratio Auto-Fit)</p>
+    <p class="text-[11px] font-bold mb-1.5" style="color:var(--mut)">PROPERTY PHOTOS (WebP Fast Auto-Compress 16:10)</p>
     <div class="grid grid-cols-2 gap-2.5 mb-3">
       <label class="relative block w-full overflow-hidden rounded-2xl cursor-pointer border-2 border-dashed grid place-items-center text-center" style="aspect-ratio:16/10;border-color:var(--a);background:var(--bg)">
         <input id="imgIn1" type="file" accept="image/*" class="hidden">
