@@ -61,7 +61,7 @@ function toast(m) {
   }, 2500);
 }
 
-/* --- 1. PUSH NOTIFICATION PERMISSION SYSTEM (WEB + APK READY) --- */
+/* --- 1. PUSH NOTIFICATION PERMISSION SYSTEM --- */
 function updateNotifBadge() {
   if (!('Notification' in window)) return;
   if (Notification.permission === 'granted') {
@@ -71,7 +71,6 @@ function updateNotifBadge() {
 
 async function askNotificationPermission() {
   $('#notifModal').classList.remove('open');
-  // If running inside an Android APK WebView wrapper
   if (window.Android && typeof window.Android.requestNotificationPermission === 'function') {
     window.Android.requestNotificationPermission();
   }
@@ -84,7 +83,7 @@ async function askNotificationPermission() {
     if (perm === 'granted') {
       localStorage.setItem('ap_notif_granted', 'true');
       updateNotifBadge();
-      toast('Notifications Chalu Ho Gayi ✓ (Allow All Time)');
+      toast('Notifications Chalu Ho Gayi ✓');
       sendLocalNotification('AwasPatna Alerts Active ✓', 'Ab Patna mein naye Room, Flat ya Plot aate hi aapko turant khabar milegi!');
       if (auth.currentUser) {
         setDoc(doc(db, "users", auth.currentUser.uid), { notifEnabled: true, notifUpdatedAt: Date.now() }, { merge: true }).catch(() => {});
@@ -117,7 +116,6 @@ async function sendLocalNotification(title, body) {
 $('#notifAllow').onclick = askNotificationPermission;
 $('#notifLater').onclick = () => $('#notifModal').classList.remove('open');
 
-// Auto-prompt notification permission 4 seconds after opening app if not asked yet
 setTimeout(() => {
   if ('Notification' in window && Notification.permission === 'default' && !sessionStorage.getItem('ap_notif_asked')) {
     sessionStorage.setItem('ap_notif_asked', '1');
@@ -138,7 +136,6 @@ function cropImageToFixedRatio(file, targetW = 800, targetH = 500, quality = 0.7
         canvas.height = targetH;
         const ctx = canvas.getContext('2d');
 
-        // Center-crop calculation for exact 16:10 ratio
         const targetRatio = targetW / targetH;
         const srcRatio = img.width / img.height;
         let sx = 0, sy = 0, sw = img.width, sh = img.height;
@@ -199,7 +196,6 @@ onSnapshot(approvedQuery, snap => {
     const live = [];
     snap.forEach(dc => {
       const d = dc.data();
-      // Trigger push notification if a brand new listing arrives while app is active
       if (firstLoadDone && !knownListingIds.has(dc.id)) {
         sendLocalNotification(`Nayi Listing: ${d.type || 'Room'} in ${d.loc}`, `${d.title} · ${d.price}`);
       }
@@ -312,7 +308,7 @@ function syncNavUI() {
   $('#feedTitle').textContent = S.savedOnly ? 'Saved Listings' : 'Taaza Listings';
 }
 
-/* --- 6. MEDIA (REAL PHOTOS IN FIXED 16:10 RATIO OR ILLUSTRATED FALLBACK) --- */
+/* --- 6. MEDIA (REAL PHOTOS OR ILLUSTRATED FALLBACK) --- */
 function defs(i, h) {
   return `<defs><linearGradient id="k${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="hsl(${h} 55% 24%)"/><stop offset=".6" stop-color="hsl(${h + 28} 80% 62%)"/><stop offset="1" stop-color="hsl(${h + 45} 90% 80%)"/></linearGradient><radialGradient id="r${i}" cx=".78" cy=".6" r=".55"><stop offset="0" stop-color="#fff6d0" stop-opacity=".95"/><stop offset="1" stop-color="#fff6d0" stop-opacity="0"/></radialGradient><linearGradient id="f${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="hsl(${h} 28% 92%)"/><stop offset="1" stop-color="hsl(${h} 26% 74%)"/></linearGradient><linearGradient id="w${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#ffb347"/></linearGradient><filter id="b${i}"><feGaussianBlur stdDeviation="3"/></filter></defs>`;
 }
@@ -509,7 +505,7 @@ $('#verify').onclick = async () => {
   }
 };
 
-/* --- 9. FREE LISTING SUBMISSION (WITH FIXED 16:10 PHOTOS) --- */
+/* --- 9. FREE LISTING SUBMISSION --- */
 const PM = $('#postModal');
 function openPostModal() {
   if (!S.freeAllowed) { toast('Abhi nayi listing band hai'); return; }
@@ -663,7 +659,7 @@ $('#palBtn').onclick = e => {
 };
 $('#bellBtn').onclick = () => {
   if ('Notification' in window && Notification.permission === 'granted') {
-    toast('Notifications Chalu Hain ✓ Koi naya alert nahi');
+    toast('Notifications Chalu Hain ✓');
   } else {
     $('#notifModal').classList.add('open');
   }
