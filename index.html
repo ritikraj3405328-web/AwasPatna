@@ -40,7 +40,7 @@
   <header class="bar px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-2">
       <svg viewBox="0 0 40 40" class="w-9 h-9" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#fff"/><path d="M9 17l4 3 7-8 7 8 4-3-2 9H11z" fill="var(--a)"/><path d="M12 28h16v4a1 1 0 01-1 1H13a1 1 0 01-1-1z" fill="var(--b)"/><rect x="18" y="29" width="4" height="4" rx="1" fill="#fff"/></svg>
-      <span class="hd text-[20px] font-extrabold tracking-tight">AwasPatna</span>
+      <span id="appName" class="hd text-[20px] font-extrabold tracking-tight">AwasPatna</span>
     </div>
     <div class="flex items-center gap-2 relative">
       <button id="locBtn" class="glassc flex items-center gap-1 text-xs font-bold rounded-full px-3 h-10"><svg class="ic !w-3.5 !h-3.5"><use href="#i-pin"/></svg><span id="locLbl">All Patna</span><svg class="ic !w-3 !h-3"><use href="#i-chev"/></svg></button>
@@ -61,7 +61,7 @@
   </header>
 
   <!-- HERO + 2. SEARCH -->
-  <section id="heroSec" class="hero px-5 pt-5 pb-14">
+  <section class="hero px-5 pt-5 pb-14">
     <p class="text-sm font-semibold opacity-90 relative">Namaste! 👋</p>
     <h1 class="hd text-[27px] leading-tight font-extrabold mt-1 relative">Patna mein apna<br>perfect ghar dhoondhein</h1>
     <div class="flex gap-2 mt-4 text-[11.5px] font-bold relative">
@@ -70,7 +70,7 @@
       <span class="glassc rounded-full px-3 py-1.5">Free Listing</span>
     </div>
   </section>
-  <div id="searchWrap" class="px-4 -mt-8 relative z-10">
+  <div class="px-4 -mt-8 relative z-10">
     <div class="pod flex items-center gap-2 p-2 focus-within:ring-2 focus-within:ring-[var(--a)]">
       <span class="grad w-11 h-11 rounded-2xl grid place-items-center"><svg class="ic"><use href="#i-search"/></svg></span>
       <input id="q" type="search" placeholder="Room, flat ya plot search karein…" class="flex-1 min-w-0 bg-transparent outline-none text-sm font-semibold placeholder:font-medium" style="color:var(--tx)">
@@ -79,24 +79,20 @@
 
   <main class="pb-40">
     <div id="pills" class="noscroll flex gap-2 overflow-x-auto px-4 pt-4 pb-2"></div>
-
-    <!-- 3. CATEGORIES -->
     <div id="cats" class="noscroll flex gap-3 overflow-x-auto px-4 pt-4 pb-4"></div>
 
     <!-- FEATURED -->
-    <div id="featWrap">
-      <div class="px-4 mb-3 flex items-end justify-between"><h2 class="hd font-extrabold text-lg">Featured</h2><span class="text-xs font-bold" style="color:var(--a)">Swipe karein →</span></div>
-      <div id="feat" class="noscroll flex gap-3 overflow-x-auto px-4 pb-5" style="scroll-snap-type:x mandatory"></div>
-    </div>
+    <div class="px-4 mb-3 flex items-end justify-between"><h2 class="hd font-extrabold text-lg">Featured</h2><span class="text-xs font-bold" style="color:var(--a)">Swipe karein →</span></div>
+    <div id="feat" class="noscroll flex gap-3 overflow-x-auto px-4 pb-5" style="scroll-snap-type:x mandatory"></div>
 
     <!-- 4. AD SLOT -->
-    <section class="ad mx-4 mb-6 h-24 grid place-items-center text-center relative">
+    <section id="homeAdSlot" class="ad mx-4 mb-6 h-24 grid place-items-center text-center relative overflow-hidden">
       <span class="absolute top-1.5 right-3 text-[9px] font-bold tracking-widest" style="color:var(--a)">SPONSORED</span>
-      <div><div class="hd font-bold" style="color:var(--a)">Ad Space · 320×100</div><div class="text-[11px]" style="color:var(--mut)">Adsterra / Google AdSense banner</div></div>
+      <div id="homeAdContent"><div class="hd font-bold" style="color:var(--a)">Ad Space · 320×100</div><div class="text-[11px]" style="color:var(--mut)">Adsterra / Google AdSense banner</div></div>
     </section>
 
     <!-- 5. FEED -->
-    <div class="px-4 mb-3 flex items-end justify-between"><h2 id="feedTitle" class="hd font-extrabold text-lg">Taaza Listings</h2><span id="count" class="text-xs font-bold" style="color:var(--mut)"></span></div>
+    <div class="px-4 mb-3 flex items-end justify-between"><h2 id="feedTitle" class="hd font-extrabold text-lg">Taaza Listings</h2><span id="count" class="text-xs font-bold" style="color:var(--mut)">Loading...</span></div>
     <section id="feed" class="px-4"></section>
   </main>
 
@@ -107,23 +103,25 @@
       <button data-nav="saved" class="nav flex flex-col items-center gap-1"><svg class="ic"><use href="#i-heart"/></svg>Saved</button>
       <button id="fab" class="flex flex-col items-center gap-2 -mt-9" style="color:var(--a)"><span class="fab grad"><svg class="ic !w-7 !h-7" style="stroke-width:2.6"><use href="#i-plus"/></svg></span><span class="text-[9px] leading-tight text-center mt-1">Room/Plot Dalein<br>(Free)</span></button>
       <button data-nav="alerts" class="nav flex flex-col items-center gap-1"><svg class="ic"><use href="#i-bell"/></svg>Alerts</button>
-      <button data-nav="profile" class="nav flex flex-col items-center gap-1"><svg class="ic"><use href="#i-user"/></svg>Profile</button>
+      <button data-nav="profile" class="nav flex flex-col items-center gap-1"><svg class="ic"><use href="#i-user"/></svg><span id="profLbl">Profile</span></button>
     </div>
   </nav>
 </div>
 
-<!-- 6. OTP MODAL -->
+<!-- 6. FIREBASE OTP MODAL (6-DIGIT) -->
 <div id="modal" class="modal fixed inset-0 z-50 flex items-end justify-center p-3" style="background:rgba(8,6,24,.6);backdrop-filter:blur(6px)">
   <div class="sheet relative w-full max-w-md overflow-hidden text-center" style="background:var(--card);border-radius:30px;border:1px solid var(--line)">
     <div class="grad pt-7 pb-9 relative">
       <button id="mClose" class="glassc absolute top-4 right-4 w-9 h-9 rounded-full grid place-items-center" aria-label="Close"><svg class="ic !w-4 !h-4"><use href="#i-x"/></svg></button>
       <div class="glassc w-16 h-16 rounded-3xl mx-auto grid place-items-center"><svg id="mIcon" class="ic !w-8 !h-8"><use href="#i-shield"/></svg></div>
     </div>
-    <div class="px-6 pb-7 -mt-3 rounded-t-[26px] relative" style="background:var(--card)">
+    <div class="px-5 pb-7 -mt-3 rounded-t-[26px] relative" style="background:var(--card)">
+      <div id="recaptcha-container"></div>
       <div id="s1" class="pt-6">
         <h3 class="hd font-extrabold text-2xl">Number verify karein</h3>
-        <p class="text-sm mt-1" style="color:var(--mut)">Owner se seedha baat karne ke liye login karein.</p>
-        <div class="mt-5 flex items-center px-4 h-14 gap-2 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--a)]" style="background:var(--bg);border:1.5px solid var(--line)">
+        <p class="text-sm mt-1" style="color:var(--mut)">Owner se baat karne ya listing daalne ke liye login karein.</p>
+        <input id="uName" type="text" placeholder="Aapka Naam (jaise Ritik Kumar)" class="mt-4 w-full h-12 px-4 rounded-2xl outline-none font-bold text-sm" style="background:var(--bg);border:1.5px solid var(--line);color:var(--tx)">
+        <div class="mt-3 flex items-center px-4 h-14 gap-2 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--a)]" style="background:var(--bg);border:1.5px solid var(--line)">
           <b style="color:var(--a)">+91</b><span class="w-px h-5" style="background:var(--line)"></span>
           <input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" class="bg-transparent outline-none flex-1 min-w-0 tracking-wider font-bold">
         </div>
@@ -131,13 +129,15 @@
         <button id="sendOtp" class="btn call grad w-full !h-14 text-lg mt-2">OTP bhejein</button>
       </div>
       <div id="s2" class="hidden pt-6">
-        <h3 class="hd font-extrabold text-2xl">OTP daalein</h3>
-        <p class="text-sm mt-1" style="color:var(--mut)">4-digit code bheja gaya: <b id="sentTo" style="color:var(--a)"></b></p>
-        <div class="flex justify-center gap-3 mt-5">
-          <input class="otp" maxlength="1" inputmode="numeric">
-          <input class="otp" maxlength="1" inputmode="numeric">
-          <input class="otp" maxlength="1" inputmode="numeric">
-          <input class="otp" maxlength="1" inputmode="numeric">
+        <h3 class="hd font-extrabold text-2xl">6-Digit OTP daalein</h3>
+        <p class="text-sm mt-1" style="color:var(--mut)">Code bheja gaya: <b id="sentTo" style="color:var(--a)"></b></p>
+        <div class="flex justify-center gap-2 mt-5">
+          <input class="otp !w-11 !h-13 !text-xl" maxlength="1" inputmode="numeric">
+          <input class="otp !w-11 !h-13 !text-xl" maxlength="1" inputmode="numeric">
+          <input class="otp !w-11 !h-13 !text-xl" maxlength="1" inputmode="numeric">
+          <input class="otp !w-11 !h-13 !text-xl" maxlength="1" inputmode="numeric">
+          <input class="otp !w-11 !h-13 !text-xl" maxlength="1" inputmode="numeric">
+          <input class="otp !w-11 !h-13 !text-xl" maxlength="1" inputmode="numeric">
         </div>
         <p id="oErr" class="text-xs text-red-500 mt-3 h-4"></p>
         <button id="verify" class="btn call grad w-full !h-14 text-lg mt-2"><svg class="ic"><use href="#i-finger"/></svg>Verify karein</button>
@@ -147,13 +147,37 @@
         <h3 class="hd font-extrabold text-2xl" style="color:var(--a)">Verified ✓</h3>
         <p class="text-sm mt-1" style="color:var(--mut)">Ab aap owners se connect kar sakte hain.</p>
       </div>
-      <p class="text-[10.5px] mt-4 flex items-center justify-center gap-1" style="color:var(--mut)"><svg class="ic !w-3 !h-3"><use href="#i-shield"/></svg>Aapka number surakshit hai · No spam</p>
+      <p class="text-[10.5px] mt-4 flex items-center justify-center gap-1" style="color:var(--mut)"><svg class="ic !w-3 !h-3"><use href="#i-shield"/></svg>Aapka number surakshit hai · Test OTP: 123456</p>
     </div>
+  </div>
+</div>
+
+<!-- 8. FREE LISTING SUBMISSION MODAL (USER POSTS TO ADMIN PENDING) -->
+<div id="postModal" class="modal fixed inset-0 z-50 flex items-end justify-center p-3" style="background:rgba(8,6,24,.6);backdrop-filter:blur(6px)">
+  <div class="sheet relative w-full max-w-md p-5" style="background:var(--card);border-radius:30px;border:1px solid var(--line)">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="hd font-extrabold text-lg">Room / Flat / Plot Dalein (Free)</h3>
+      <button id="pClose" class="soft w-9 h-9 rounded-full grid place-items-center"><svg class="ic !w-4 !h-4"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="grid gap-2.5 text-sm">
+      <input id="pTitle" placeholder="Title (jaise: 2 BHK Family Flat या Single Boys Room)" class="w-full h-12 px-3.5 rounded-2xl font-semibold outline-none" style="background:var(--bg);border:1.5px solid var(--line)">
+      <div class="grid grid-cols-2 gap-2.5">
+        <select id="pType" class="w-full h-12 px-3 rounded-2xl font-bold outline-none" style="background:var(--bg);border:1.5px solid var(--line)"><option value="Room">Room / PG</option><option value="Flat">Flat</option><option value="Plot">Plot</option><option value="Commercial">Commercial</option></select>
+        <select id="pLoc" class="w-full h-12 px-3 rounded-2xl font-bold outline-none" style="background:var(--bg);border:1.5px solid var(--line)"><option>Boring Road</option><option>Kankarbagh</option><option>Rajendra Nagar</option><option>Patliputra</option><option>Bailey Road</option><option>Danapur</option></select>
+      </div>
+      <div class="grid grid-cols-2 gap-2.5">
+        <input id="pPrice" placeholder="Kiraya/Dam (jaise ₹4,500)" class="w-full h-12 px-3.5 rounded-2xl font-semibold outline-none" style="background:var(--bg);border:1.5px solid var(--line)">
+        <input id="pTags" placeholder="Features (WiFi, Lift, 24x7 Water)" class="w-full h-12 px-3.5 rounded-2xl font-semibold outline-none" style="background:var(--bg);border:1.5px solid var(--line)">
+      </div>
+      <textarea id="pDesc" placeholder="Property ke baare mein jankari likhein..." class="w-full h-20 p-3.5 rounded-2xl font-semibold outline-none resize-none" style="background:var(--bg);border:1.5px solid var(--line)"></textarea>
+    </div>
+    <p id="postErr" class="text-xs text-red-500 mt-2 h-4"></p>
+    <button id="submitPost" class="btn call grad w-full !h-13 mt-1">Submit Karein (Admin Approval Ke Liye)</button>
   </div>
 </div>
 
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 z-[60] rounded-full px-4 py-2.5 text-xs font-bold text-white opacity-0 pointer-events-none transition-all" style="bottom:7.5rem;background:#14142b"></div>
 
-<script src="app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
