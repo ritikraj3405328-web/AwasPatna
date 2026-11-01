@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#4f46e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>AwasPatna – Patna’s Room & Property Finder</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1112 0v5l2 2H4zM10 21h4"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+<symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18V7M3 14h18v4M21 14v-2a3 3 0 00-3-3h-7v5"/><circle cx="7" cy="11" r="1.5"/></symbol>
+<symbol id="i-flat" viewBox="0 0 24 24"><path d="M5 21V4h9v17M14 9h5v12M3 21h18M8 8h3M8 12h3M8 16h3"/></symbol>
+<symbol id="i-plot" viewBox="0 0 24 24"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3zM9 4v13M15 7v13"/></symbol>
+<symbol id="i-shop" viewBox="0 0 24 24"><path d="M4 9l1-5h14l1 5M4 9a2.5 2.5 0 005 0 2.5 2.5 0 006 0 2.5 2.5 0 005 0M5 12v8h14v-8M10 20v-4h4v4"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-8-5-8-11a4.5 4.5 0 018-2.5A4.5 4.5 0 0120 9c0 6-8 11-8 11z"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+<symbol id="i-finger" viewBox="0 0 24 24"><path d="M12 11v3c0 3-1 5-2 6M8 9a4 4 0 018 0v2M5 12a7 7 0 0114 0c0 3 0 6-1 8M9 13c0 3-.5 5-1.5 7"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="i-pal" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a3 3 0 003-3c0-5-4-11-8-11z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="11" r="1"/></symbol>
+</defs></svg>
+
+<div class="relative max-w-md mx-auto min-h-screen">
+
+  <!-- 1. STICKY HEADER -->
+  <header class="bar px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <svg viewBox="0 0 40 40" class="w-9 h-9" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#fff"/><path d="M9 17l4 3 7-8 7 8 4-3-2 9H11z" fill="var(--a)"/><path d="M12 28h16v4a1 1 0 01-1 1H13a1 1 0 01-1-1z" fill="var(--b)"/><rect x="18" y="29" width="4" height="4" rx="1" fill="#fff"/></svg>
+      <span class="hd text-[20px] font-extrabold tracking-tight">AwasPatna</span>
+    </div>
+    <div class="flex items-center gap-2 relative">
+      <button id="locBtn" class="glassc flex items-center gap-1 text-xs font-bold rounded-full px-3 h-10"><svg class="ic !w-3.5 !h-3.5"><use href="#i-pin"/></svg><span id="locLbl">All Patna</span><svg class="ic !w-3 !h-3"><use href="#i-chev"/></svg></button>
+      <button id="palBtn" class="glassc w-10 h-10 rounded-full grid place-items-center" aria-label="Theme"><svg class="ic"><use href="#i-pal"/></svg></button>
+      <button id="bellBtn" class="pulse glassc w-10 h-10 rounded-full grid place-items-center" aria-label="Notifications"><svg class="ic"><use href="#i-bell"/></svg></button>
+      <div id="locMenu" class="hidden absolute right-0 top-12 w-48 p-1.5 text-sm rounded-2xl z-50 menu-box"></div>
+      <div id="palMenu" class="hidden absolute right-0 top-12 w-56 p-3 rounded-2xl z-50 menu-box">
+        <p class="text-[11px] font-bold mb-2" style="color:var(--mut)">COLOUR CHUNEIN</p>
+        <div class="flex gap-2.5">
+          <button data-pal="royal" class="w-9 h-9 rounded-full" style="background:linear-gradient(135deg,#4f46e5,#9333ea)" aria-label="Royal"></button>
+          <button data-pal="coral" class="w-9 h-9 rounded-full" style="background:linear-gradient(135deg,#f43f5e,#fb923c)" aria-label="Coral"></button>
+          <button data-pal="ocean" class="w-9 h-9 rounded-full" style="background:linear-gradient(135deg,#0891b2,#2563eb)" aria-label="Ocean"></button>
+          <button data-pal="amber" class="w-9 h-9 rounded-full" style="background:linear-gradient(135deg,#d97706,#be123c)" aria-label="Sunset"></button>
+        </div>
+        <button data-mode class="soft w-full mt-3 h-10 rounded-xl text-xs font-bold">Light / Dark badlein</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO + 2. SEARCH -->
+  <section id="heroSec" class="hero px-5 pt-5 pb-14">
+    <p class="text-sm font-semibold opacity-90 relative">Namaste! 👋</p>
+    <h1 class="hd text-[27px] leading-tight font-extrabold mt-1 relative">Patna mein apna<br>perfect ghar dhoondhein</h1>
+    <div class="flex gap-2 mt-4 text-[11.5px] font-bold relative">
+      <span class="glassc rounded-full px-3 py-1.5">✓ Verified Owners</span>
+      <span class="glassc rounded-full px-3 py-1.5">0% Brokerage</span>
+      <span class="glassc rounded-full px-3 py-1.5">Free Listing</span>
+    </div>
+  </section>
+  <div id="searchWrap" class="px-4 -mt-8 relative z-10">
+    <div class="pod flex items-center gap-2 p-2 focus-within:ring-2 focus-within:ring-[var(--a)]">
+      <span class="grad w-11 h-11 rounded-2xl grid place-items-center"><svg class="ic"><use href="#i-search"/></svg></span>
+      <input id="q" type="search" placeholder="Room, flat ya plot search karein…" class="flex-1 min-w-0 bg-transparent outline-none text-sm font-semibold placeholder:font-medium" style="color:var(--tx)">
+    </div>
+  </div>
+
+  <main class="pb-40">
+    <div id="pills" class="noscroll flex gap-2 overflow-x-auto px-4 pt-4 pb-2"></div>
+
+    <!-- 3. CATEGORIES -->
+    <div id="cats" class="noscroll flex gap-3 overflow-x-auto px-4 pt-4 pb-4"></div>
+
+    <!-- FEATURED -->
+    <div id="featWrap">
+      <div class="px-4 mb-3 flex items-end justify-between"><h2 class="hd font-extrabold text-lg">Featured</h2><span class="text-xs font-bold" style="color:var(--a)">Swipe karein →</span></div>
+      <div id="feat" class="noscroll flex gap-3 overflow-x-auto px-4 pb-5" style="scroll-snap-type:x mandatory"></div>
+    </div>
+
+    <!-- 4. AD SLOT -->
+    <section class="ad mx-4 mb-6 h-24 grid place-items-center text-center relative">
+      <span class="absolute top-1.5 right-3 text-[9px] font-bold tracking-widest" style="color:var(--a)">SPONSORED</span>
+      <div><div class="hd font-bold" style="color:var(--a)">Ad Space · 320×100</div><div class="text-[11px]" style="color:var(--mut)">Adsterra / Google AdSense banner</div></div>
+    </section>
+
+    <!-- 5. FEED -->
+    <div class="px-4 mb-3 flex items-end justify-between"><h2 id="feedTitle" class="hd font-extrabold text-lg">Taaza Listings</h2><span id="count" class="text-xs font-bold" style="color:var(--mut)"></span></div>
+    <section id="feed" class="px-4"></section>
+  </main>
+
+  <!-- 7. BOTTOM NAV -->
+  <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-30 px-3" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + .6rem)">
+    <div class="nv grid grid-cols-5 items-end px-1 pb-2 pt-2.5 text-[10.5px] font-bold" style="color:var(--mut)">
+      <button data-nav="home" class="nav flex flex-col items-center gap-1" style="color:var(--a)"><svg class="ic"><use href="#i-home"/></svg>Home</button>
+      <button data-nav="saved" class="nav flex flex-col items-center gap-1"><svg class="ic"><use href="#i-heart"/></svg>Saved</button>
+      <button id="fab" class="flex flex-col items-center gap-2 -mt-9" style="color:var(--a)"><span class="fab grad"><svg class="ic !w-7 !h-7" style="stroke-width:2.6"><use href="#i-plus"/></svg></span><span class="text-[9px] leading-tight text-center mt-1">Room/Plot Dalein<br>(Free)</span></button>
+      <button data-nav="alerts" class="nav flex flex-col items-center gap-1"><svg class="ic"><use href="#i-bell"/></svg>Alerts</button>
+      <button data-nav="profile" class="nav flex flex-col items-center gap-1"><svg class="ic"><use href="#i-user"/></svg>Profile</button>
+    </div>
+  </nav>
+</div>
+
+<!-- 6. OTP MODAL -->
+<div id="modal" class="modal fixed inset-0 z-50 flex items-end justify-center p-3" style="background:rgba(8,6,24,.6);backdrop-filter:blur(6px)">
+  <div class="sheet relative w-full max-w-md overflow-hidden text-center" style="background:var(--card);border-radius:30px;border:1px solid var(--line)">
+    <div class="grad pt-7 pb-9 relative">
+      <button id="mClose" class="glassc absolute top-4 right-4 w-9 h-9 rounded-full grid place-items-center" aria-label="Close"><svg class="ic !w-4 !h-4"><use href="#i-x"/></svg></button>
+      <div class="glassc w-16 h-16 rounded-3xl mx-auto grid place-items-center"><svg id="mIcon" class="ic !w-8 !h-8"><use href="#i-shield"/></svg></div>
+    </div>
+    <div class="px-6 pb-7 -mt-3 rounded-t-[26px] relative" style="background:var(--card)">
+      <div id="s1" class="pt-6">
+        <h3 class="hd font-extrabold text-2xl">Number verify karein</h3>
+        <p class="text-sm mt-1" style="color:var(--mut)">Owner se seedha baat karne ke liye login karein.</p>
+        <div class="mt-5 flex items-center px-4 h-14 gap-2 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--a)]" style="background:var(--bg);border:1.5px solid var(--line)">
+          <b style="color:var(--a)">+91</b><span class="w-px h-5" style="background:var(--line)"></span>
+          <input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" class="bg-transparent outline-none flex-1 min-w-0 tracking-wider font-bold">
+        </div>
+        <p id="pErr" class="text-xs text-red-500 mt-2 h-4"></p>
+        <button id="sendOtp" class="btn call grad w-full !h-14 text-lg mt-2">OTP bhejein</button>
+      </div>
+      <div id="s2" class="hidden pt-6">
+        <h3 class="hd font-extrabold text-2xl">OTP daalein</h3>
+        <p class="text-sm mt-1" style="color:var(--mut)">4-digit code bheja gaya: <b id="sentTo" style="color:var(--a)"></b></p>
+        <div class="flex justify-center gap-3 mt-5">
+          <input class="otp" maxlength="1" inputmode="numeric">
+          <input class="otp" maxlength="1" inputmode="numeric">
+          <input class="otp" maxlength="1" inputmode="numeric">
+          <input class="otp" maxlength="1" inputmode="numeric">
+        </div>
+        <p id="oErr" class="text-xs text-red-500 mt-3 h-4"></p>
+        <button id="verify" class="btn call grad w-full !h-14 text-lg mt-2"><svg class="ic"><use href="#i-finger"/></svg>Verify karein</button>
+        <button id="back" class="text-xs mt-3 underline" style="color:var(--mut)">Number badlein</button>
+      </div>
+      <div id="s3" class="hidden pt-6 pb-3">
+        <h3 class="hd font-extrabold text-2xl" style="color:var(--a)">Verified ✓</h3>
+        <p class="text-sm mt-1" style="color:var(--mut)">Ab aap owners se connect kar sakte hain.</p>
+      </div>
+      <p class="text-[10.5px] mt-4 flex items-center justify-center gap-1" style="color:var(--mut)"><svg class="ic !w-3 !h-3"><use href="#i-shield"/></svg>Aapka number surakshit hai · No spam</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 z-[60] rounded-full px-4 py-2.5 text-xs font-bold text-white opacity-0 pointer-events-none transition-all" style="bottom:7.5rem;background:#14142b"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
