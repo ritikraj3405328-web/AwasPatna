@@ -48,7 +48,7 @@ body {
   overflow-x: hidden;
   overscroll-behavior-y: none;
 }
-input, textarea {
+input, textarea, select {
   user-select: text;
   font-family: inherit;
 }
