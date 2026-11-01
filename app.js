@@ -1,5 +1,5 @@
 import { 
-  db, auth, collection, doc, onSnapshot, addDoc, setDoc, 
+  db, auth, collection, doc, onSnapshot, addDoc, setDoc, query, where,
   RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged 
 } from "./firebase-config.js";
 
@@ -28,7 +28,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const ic = (n, c = '') => `<svg class="ic ${c}"><use href="#i-${n}"/></svg>`;
 
-// ANTI-HACKING XSS SANITIZER (Blocks malicious <script> or HTML injection)
+// ANTI-HACKING XSS SANITIZER
 const esc = str => String(str ?? '').replace(/[&<>"']/g, m => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[m]));
@@ -45,35 +45,39 @@ function toast(m) {
   }, 2400);
 }
 
-/* --- 1. FIREBASE REAL-TIME LISTENERS --- */
+/* --- 1. FIREBASE REAL-TIME LISTENERS (MATCHES SECURITY RULES) --- */
 const HUES = { Room: 22, Flat: 262, Plot: 140, Commercial: 200 };
 
-onSnapshot(collection(db, "listings"), snap => {
+// Security Rules ke mutabiq sirf 'approved' listings query karein
+const approvedQuery = query(collection(db, "listings"), where("status", "==", "approved"));
+
+onSnapshot(approvedQuery, snap => {
   if (!snap.empty) {
     const live = [];
     snap.forEach(dc => {
       const d = dc.data();
-      if (d.status === 'approved') {
-        live.push({
-          id: dc.id,
-          t: d.type || d.t || 'Room',
-          h: Number(d.h) || HUES[d.type] || 22,
-          title: d.title || 'Property in Patna',
-          loc: d.loc || 'Boring Road',
-          price: d.price || '₹5,000',
-          u: d.u !== undefined ? d.u : (d.type === 'Plot' ? '' : '/mo'),
-          ago: d.ago || 'Verified',
-          tags: Array.isArray(d.tags) ? d.tags.slice(0, 6) : ['Verified', d.type || 'Room'],
-          d: d.d || `${d.title} available in ${d.loc}, Patna.`,
-          phone: d.ownerPhone ? ('91' + String(d.ownerPhone).replace(/\D/g, '').slice(-10)) : '919000000000'
-        });
-      }
+      live.push({
+        id: dc.id,
+        t: d.type || d.t || 'Room',
+        h: Number(d.h) || HUES[d.type] || 22,
+        title: d.title || 'Property in Patna',
+        loc: d.loc || 'Boring Road',
+        price: d.price || '₹5,000',
+        u: d.u !== undefined ? d.u : (d.type === 'Plot' ? '' : '/mo'),
+        ago: d.ago || 'Verified',
+        tags: Array.isArray(d.tags) ? d.tags.slice(0, 6) : ['Verified', d.type || 'Room'],
+        d: d.d || `${d.title} available in ${d.loc}, Patna.`,
+        phone: d.ownerPhone ? ('91' + String(d.ownerPhone).replace(/\D/g, '').slice(-10)) : '919000000000',
+        createdAt: d.createdAt || 0
+      });
     });
+    live.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     DATA = live;
   }
   renderFeat();
   refresh();
-}, () => {
+}, err => {
+  console.warn("Listings load info:", err.message);
   renderFeat();
   refresh();
 });
@@ -243,7 +247,7 @@ $('#polAccept').onclick = () => {
   closePolicy();
 };
 
-/* --- 6. HACK-PROOF FIREBASE PHONE OTP MODAL --- */
+/* --- 6. HACK-PROOF FIREBASE PHONE OTP MODAL (WITH AUTO-RESET RECAPTCHA) --- */
 const M = $('#modal'), steps = ['#s1', '#s2', '#s3'];
 function showOtpStep(n) {
   S.otpStep = n;
@@ -267,6 +271,15 @@ $('#mClose').onclick = closeModal;
 M.onclick = e => { if (e.target === M) closeModal(); };
 $('#phone').oninput = e => e.target.value = e.target.value.replace(/\D/g, '');
 
+function resetRecaptcha() {
+  if (window.recaptchaVerifier) {
+    try { window.recaptchaVerifier.clear(); } catch (e) {}
+    window.recaptchaVerifier = null;
+  }
+  const box = $('#recaptcha-container');
+  if (box) box.innerHTML = '';
+}
+
 $('#sendOtp').onclick = async () => {
   const nm = $('#uName').value.trim();
   const v = $('#phone').value;
@@ -288,9 +301,8 @@ $('#sendOtp').onclick = async () => {
   $('#pErr').textContent = 'Sending secure OTP...';
 
   try {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
-    }
+    resetRecaptcha();
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
     S.confirmResult = await signInWithPhoneNumber(auth, '+91' + v, window.recaptchaVerifier);
     $('#pErr').textContent = '';
     $('#sentTo').textContent = '+91 ' + v.slice(0, 2) + 'XXXXXX' + v.slice(-2);
@@ -299,7 +311,16 @@ $('#sendOtp').onclick = async () => {
     pushAppState('#otp-step');
     setTimeout(() => $('.otp').focus(), 350);
   } catch (err) {
-    $('#pErr').textContent = 'OTP error: Firebase Console mein Phone Auth enable karein.';
+    console.error("Firebase OTP Error:", err);
+    resetRecaptcha();
+    const code = err.code || '';
+    if (code === 'auth/unauthorized-domain') {
+      $('#pErr').textContent = `Domain (${location.hostname}) ko Firebase Auth -> Settings -> Authorized domains mein add karein`;
+    } else if (code === 'auth/quota-exceeded' || code === 'auth/too-many-requests') {
+      $('#pErr').textContent = 'SMS limit poori ho gayi! Firebase Phone Auth mein Test Number (+91...) add karein.';
+    } else {
+      $('#pErr').textContent = err.message || 'OTP bhejne mein samasya aayi';
+    }
   }
 };
 
@@ -354,7 +375,8 @@ $('#verify').onclick = async () => {
       if (S.after) S.after();
     }, 900);
   } catch (e) {
-    $('#oErr').textContent = 'Galat OTP code! Kripya sahi SMS code daalein.';
+    console.error("Verify Error:", e);
+    $('#oErr').textContent = 'Galat OTP code! Kripya sahi 6-digit code daalein.';
   }
 };
 
@@ -415,7 +437,8 @@ $('#submitPost').onclick = async () => {
     $('#pTitle').value = $('#pPrice').value = $('#pTags').value = $('#pDesc').value = '';
     toast('Listing submit ho gayi! Admin approval ke baad live dikhegi.');
   } catch (err) {
-    $('#postErr').textContent = 'Submission blocked by security rules or network.';
+    console.error("Post Error:", err);
+    $('#postErr').textContent = 'Error: ' + (err.message || 'Submission failed');
   }
 };
 
