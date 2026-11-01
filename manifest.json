@@ -1,0 +1,19 @@
+{
+  "name": "AwasPatna – Room & Property Finder",
+  "short_name": "AwasPatna",
+  "description": "Patna mein Room, PG, Flat aur Plot bina brokerage ke dhoondhein.",
+  "start_url": "./index.html#home",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0b16",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/619/619153.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
