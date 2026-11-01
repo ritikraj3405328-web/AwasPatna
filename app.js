@@ -3,32 +3,48 @@ import {
   RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged 
 } from "./firebase-config.js";
 
-const LOCS = ['All Patna', 'Boring Road', 'Kankarbagh', 'Rajendra Nagar', 'Patliputra', 'Bailey Road', 'Danapur'];
+// PATNA KE SAARE 38+ PRAMUKH AREAS & CITIES
+const LOCS = [
+  'All Patna', 'Boring Road', 'Kankarbagh', 'Rajendra Nagar', 'Patliputra', 
+  'Bailey Road', 'Danapur', 'Kumhrar', 'Ashok Rajpath', 'Fraser Road', 
+  'Exhibition Road', 'Gandhi Maidan', 'Anisabad', 'Phulwari Sharif', 'Digha', 
+  'Rajiv Nagar', 'Keshri Nagar', 'Ashiana Nagar', 'Rukanpura', 'Saguna More', 
+  'Gola Road', 'RPS More', 'Khajpura', 'Jagdeo Path', 'Raja Bazar', 
+  'Punaichak', 'Shivpuri', 'Patel Nagar', 'Shastri Nagar', 'Gardanibagh', 
+  'Mithapur', 'Sipara', 'Beur', 'ByPass Road', 'Zero Mile', 'Bazar Samiti', 
+  'Musallahpur Hat', 'Bhikhna Pahari', 'Mahendru', 'Sultanganj', 'Agamkuan', 
+  'Gulzarbagh', 'Patna City', 'Didarganj', 'Fatuha', 'Khagaul', 'Neora', 'Bihta'
+];
+
 const CATS = [
   { k: 'Room', l: 'Room / PG', i: 'bed' },
   { k: 'Flat', l: 'Flat', i: 'flat' },
   { k: 'Plot', l: 'Plot/Zameen', i: 'plot' },
   { k: 'Commercial', l: 'Commercial', i: 'shop' }
 ];
+
 const FALLBACK_DATA = [
-  { id: 'd1', t: 'Room', h: 22, title: 'Furnished Single Room + Attached Bath', loc: 'Kankarbagh', price: '₹4,200', u: '/mo', ago: 'Aaj', tags: ['Furnished', 'WiFi', '24×7 Water'], d: 'Ground floor room, students aur working professionals ke liye ideal.', phone: '919812300001', status: 'approved' },
-  { id: 'd2', t: 'Flat', h: 262, title: 'Premium 2 BHK, 3rd Floor', loc: 'Boring Road', price: '₹14,500', u: '/mo', ago: 'Aaj', tags: ['2 BHK', 'Lift', 'Parking'], d: 'Modular kitchen, power backup aur gated society. Family preferred.', phone: '919934500002', status: 'approved' },
-  { id: 'd3', t: 'Plot', h: 140, title: '1,200 sq ft Residential Plot', loc: 'Rajendra Nagar', price: '₹48 Lakh', u: '', ago: 'Kal', tags: ['East Facing', 'Corner', 'Ready Registry'], d: '20 ft road, clear title aur registry ke liye taiyar.', phone: '919771100003', status: 'approved' }
+  { id: 'd1', t: 'Room', h: 22, title: 'Furnished Single Room + Attached Bath', loc: 'Kankarbagh', price: '₹4,200', u: '/mo', ago: 'Aaj', tags: ['Furnished', 'WiFi', '24×7 Water'], d: 'Ground floor room, students aur working professionals ke liye ideal.', phone: '919812300001', photos: [], status: 'approved' },
+  { id: 'd2', t: 'Flat', h: 262, title: 'Premium 2 BHK, 3rd Floor', loc: 'Boring Road', price: '₹14,500', u: '/mo', ago: 'Aaj', tags: ['2 BHK', 'Lift', 'Parking'], d: 'Modular kitchen, power backup aur gated society. Family preferred.', phone: '919934500002', photos: [], status: 'approved' },
+  { id: 'd3', t: 'Plot', h: 140, title: '1,200 sq ft Residential Plot', loc: 'Rajendra Nagar', price: '₹48 Lakh', u: '', ago: 'Kal', tags: ['East Facing', 'Corner', 'Ready Registry'], d: '20 ft road, clear title aur registry ke liye taiyar.', phone: '919771100003', photos: [], status: 'approved' }
 ];
 
 let DATA = [...FALLBACK_DATA];
+let knownListingIds = new Set();
+let firstLoadDone = false;
+
 const S = { 
   tab: 'home', cat: null, loc: 'All Patna', q: '', 
   saved: new Set(JSON.parse(localStorage.getItem('ap_saved') || '[]')), 
   savedOnly: false, logged: false, uid: null, userPhone: '', userName: '',
-  after: null, otpStep: 0, confirmResult: null, freeAllowed: true 
+  after: null, otpStep: 0, confirmResult: null, freeAllowed: true,
+  photo1: null, photo2: null
 };
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const ic = (n, c = '') => `<svg class="ic ${c}"><use href="#i-${n}"/></svg>`;
 
-// ANTI-HACKING XSS SANITIZER
 const esc = str => String(str ?? '').replace(/[&<>"']/g, m => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[m]));
@@ -42,13 +58,140 @@ function toast(m) {
   toast.x = setTimeout(() => {
     t.style.opacity = 0;
     t.style.transform = 'translate(-50%,0)';
-  }, 2400);
+  }, 2500);
 }
 
-/* --- 1. FIREBASE REAL-TIME LISTENERS (MATCHES SECURITY RULES) --- */
-const HUES = { Room: 22, Flat: 262, Plot: 140, Commercial: 200 };
+/* --- 1. PUSH NOTIFICATION PERMISSION SYSTEM (WEB + APK READY) --- */
+function updateNotifBadge() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    $('#alertLbl').textContent = 'Alerts ON';
+  }
+}
 
-// Security Rules ke mutabiq sirf 'approved' listings query karein
+async function askNotificationPermission() {
+  $('#notifModal').classList.remove('open');
+  // If running inside an Android APK WebView wrapper
+  if (window.Android && typeof window.Android.requestNotificationPermission === 'function') {
+    window.Android.requestNotificationPermission();
+  }
+  if (!('Notification' in window)) {
+    toast('App Notifications Enabled ✓');
+    return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      localStorage.setItem('ap_notif_granted', 'true');
+      updateNotifBadge();
+      toast('Notifications Chalu Ho Gayi ✓ (Allow All Time)');
+      sendLocalNotification('AwasPatna Alerts Active ✓', 'Ab Patna mein naye Room, Flat ya Plot aate hi aapko turant khabar milegi!');
+      if (auth.currentUser) {
+        setDoc(doc(db, "users", auth.currentUser.uid), { notifEnabled: true, notifUpdatedAt: Date.now() }, { merge: true }).catch(() => {});
+      }
+    } else {
+      toast('Notification permission allow nahi ki gayi');
+    }
+  } catch (e) {
+    toast('Browser settings se Notification Allow karein');
+  }
+}
+
+async function sendLocalNotification(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg && reg.showNotification) {
+      reg.showNotification(title, {
+        body,
+        icon: 'https://cdn-icons-png.flaticon.com/512/619/619153.png',
+        badge: 'https://cdn-icons-png.flaticon.com/512/619/619153.png',
+        vibrate: [200, 100, 200]
+      });
+    } else {
+      new Notification(title, { body });
+    }
+  } catch (e) {}
+}
+
+$('#notifAllow').onclick = askNotificationPermission;
+$('#notifLater').onclick = () => $('#notifModal').classList.remove('open');
+
+// Auto-prompt notification permission 4 seconds after opening app if not asked yet
+setTimeout(() => {
+  if ('Notification' in window && Notification.permission === 'default' && !sessionStorage.getItem('ap_notif_asked')) {
+    sessionStorage.setItem('ap_notif_asked', '1');
+    $('#notifModal').classList.add('open');
+  }
+  updateNotifBadge();
+}, 4000);
+
+/* --- 2. FIXED 16:10 RATIO IMAGE AUTO-CROPPER & COMPRESSOR --- */
+function cropImageToFixedRatio(file, targetW = 800, targetH = 500, quality = 0.78) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+
+        // Center-crop calculation for exact 16:10 ratio
+        const targetRatio = targetW / targetH;
+        const srcRatio = img.width / img.height;
+        let sx = 0, sy = 0, sw = img.width, sh = img.height;
+
+        if (srcRatio > targetRatio) {
+          sw = img.height * targetRatio;
+          sx = (img.width - sw) / 2;
+        } else {
+          sh = img.width / targetRatio;
+          sy = (img.height - sh) / 2;
+        }
+
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+$('#imgIn1').onchange = async e => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  toast('Photo 1 ko 16:10 ratio mein set kiya ja raha hai...');
+  try {
+    S.photo1 = await cropImageToFixedRatio(f);
+    $('#prev1').src = S.photo1;
+    $('#prev1').classList.remove('hidden');
+    $('#ph1').classList.add('hidden');
+  } catch (err) {
+    toast('Photo load karne mein samasya aayi');
+  }
+};
+
+$('#imgIn2').onchange = async e => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  toast('Photo 2 ko 16:10 ratio mein set kiya ja raha hai...');
+  try {
+    S.photo2 = await cropImageToFixedRatio(f);
+    $('#prev2').src = S.photo2;
+    $('#prev2').classList.remove('hidden');
+    $('#ph2').classList.add('hidden');
+  } catch (err) {
+    toast('Photo load karne mein samasya aayi');
+  }
+};
+
+/* --- 3. FIREBASE REAL-TIME LISTENERS --- */
+const HUES = { Room: 22, Flat: 262, Plot: 140, Commercial: 200 };
 const approvedQuery = query(collection(db, "listings"), where("status", "==", "approved"));
 
 onSnapshot(approvedQuery, snap => {
@@ -56,6 +199,12 @@ onSnapshot(approvedQuery, snap => {
     const live = [];
     snap.forEach(dc => {
       const d = dc.data();
+      // Trigger push notification if a brand new listing arrives while app is active
+      if (firstLoadDone && !knownListingIds.has(dc.id)) {
+        sendLocalNotification(`Nayi Listing: ${d.type || 'Room'} in ${d.loc}`, `${d.title} · ${d.price}`);
+      }
+      knownListingIds.add(dc.id);
+
       live.push({
         id: dc.id,
         t: d.type || d.t || 'Room',
@@ -68,16 +217,17 @@ onSnapshot(approvedQuery, snap => {
         tags: Array.isArray(d.tags) ? d.tags.slice(0, 6) : ['Verified', d.type || 'Room'],
         d: d.d || `${d.title} available in ${d.loc}, Patna.`,
         phone: d.ownerPhone ? ('91' + String(d.ownerPhone).replace(/\D/g, '').slice(-10)) : '919000000000',
+        photos: Array.isArray(d.photos) ? d.photos.filter(Boolean) : [],
         createdAt: d.createdAt || 0
       });
     });
+    firstLoadDone = true;
     live.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     DATA = live;
   }
   renderFeat();
   refresh();
-}, err => {
-  console.warn("Listings load info:", err.message);
+}, () => {
   renderFeat();
   refresh();
 });
@@ -92,7 +242,7 @@ onSnapshot(doc(db, "settings", "config"), snap => {
   }
 }, () => {});
 
-/* --- 2. STRICT FIREBASE AUTHENTICATION STATE --- */
+/* --- 4. FIREBASE AUTHENTICATION STATE --- */
 onAuthStateChanged(auth, user => {
   if (user) {
     S.logged = true;
@@ -108,7 +258,7 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-/* --- 3. BACK BUTTON HISTORY ROUTER --- */
+/* --- 5. BACK BUTTON HISTORY ROUTER --- */
 function getSnapshot() {
   return {
     tab: S.tab, cat: S.cat, loc: S.loc, savedOnly: S.savedOnly,
@@ -123,6 +273,10 @@ function pushAppState(hash = '') {
 }
 
 window.addEventListener('popstate', e => {
+  if ($('#notifModal').classList.contains('open')) {
+    $('#notifModal').classList.remove('open');
+    return;
+  }
   if ($('#policyModal').classList.contains('open')) {
     $('#policyModal').classList.remove('open');
     return;
@@ -158,7 +312,7 @@ function syncNavUI() {
   $('#feedTitle').textContent = S.savedOnly ? 'Saved Listings' : 'Taaza Listings';
 }
 
-/* --- 4. SVG GRAPHICS & SAFE RENDER --- */
+/* --- 6. MEDIA (REAL PHOTOS IN FIXED 16:10 RATIO OR ILLUSTRATED FALLBACK) --- */
 function defs(i, h) {
   return `<defs><linearGradient id="k${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="hsl(${h} 55% 24%)"/><stop offset=".6" stop-color="hsl(${h + 28} 80% 62%)"/><stop offset="1" stop-color="hsl(${h + 45} 90% 80%)"/></linearGradient><radialGradient id="r${i}" cx=".78" cy=".6" r=".55"><stop offset="0" stop-color="#fff6d0" stop-opacity=".95"/><stop offset="1" stop-color="#fff6d0" stop-opacity="0"/></radialGradient><linearGradient id="f${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="hsl(${h} 28% 92%)"/><stop offset="1" stop-color="hsl(${h} 26% 74%)"/></linearGradient><linearGradient id="w${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#ffb347"/></linearGradient><filter id="b${i}"><feGaussianBlur stdDeviation="3"/></filter></defs>`;
 }
@@ -167,7 +321,7 @@ function ext(i, h, t) {
   let b = `<rect width="400" height="260" fill="url(#k${safeId})"/><rect width="400" height="260" fill="url(#r${safeId})"/>`;
   [[10, 120, 40], [60, 100, 50], [300, 110, 45], [350, 90, 50]].forEach(([x, y, w]) => b += `<rect x="${x}" y="${y}" width="${w}" height="140" fill="hsl(${h} 35% 30%)" opacity=".55" filter="url(#b${safeId})"/>`);
   if (t === 'Plot') {
-    b += `<path d="M0 150L400 120v140H0z" fill="hsl(105 45% 38%)"/><path d="M0 190L400 160v100H0z" fill="hsl(105 50% 30%)"/><path d="M70 170l120-34 150 14-60 52z" fill="hsl(105 55% 52%)" stroke="#fff" stroke-width="3" stroke-dasharray="8 6"/><rect x="226" y="108" width="5" height="44" fill="#fff"/><rect x="206" y="96" width="46" height="20" rx="4" fill="#fff"/>`;
+    b += `<path d="M0 150L400 120v140H0z" fill="hsl(105 45% 38%)"/><path d="M0 190L400 160v100H0z" fill="hsl(105 50% 30%)"/><path d="M70 170l120-34 150 14-60 52z" fill="hsl(105 55% 52%)" stroke="#fff" stroke-width="3" stroke-dasharray="8 6"/>`;
   } else {
     b += `<rect y="215" width="400" height="45" fill="hsl(${h} 18% 22%)"/><polygon points="70,92 230,70 230,215 70,215" fill="url(#f${safeId})"/><polygon points="230,70 335,98 335,215 230,215" fill="hsl(${h} 24% 52%)"/>`;
     for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) b += `<rect x="${86 + c * 48}" y="${104 + r * 27}" width="30" height="19" rx="3" fill="url(#w${safeId})" opacity="${(r + c) % 3 ? 1 : .45}"/>`;
@@ -177,22 +331,29 @@ function ext(i, h, t) {
 function inn(i, h, t) {
   const safeId = esc(i);
   let b = t === 'Plot'
-    ? `<rect width="400" height="260" fill="hsl(105 40% 34%)"/><path d="M0 120h400v34H0z" fill="hsl(${h} 10% 28%)"/><path d="M90 160h190l-12 80H70z" fill="hsl(105 55% 50%)" stroke="#fff" stroke-width="3" stroke-dasharray="9 6"/><g fill="#fff" font-family="Sora,sans-serif" font-weight="800" font-size="15" text-anchor="middle"><text x="175" y="206">Aapka Plot</text></g>`
+    ? `<rect width="400" height="260" fill="hsl(105 40% 34%)"/><path d="M0 120h400v34H0z" fill="hsl(${h} 10% 28%)"/><path d="M90 160h190l-12 80H70z" fill="hsl(105 55% 50%)" stroke="#fff" stroke-width="3" stroke-dasharray="9 6"/>`
     : `<rect width="400" height="260" fill="hsl(${h} 30% 88%)"/><rect y="170" width="400" height="90" fill="hsl(28 38% 46%)"/><rect x="250" y="34" width="116" height="124" rx="6" fill="url(#k${safeId})" stroke="#fff" stroke-width="6"/><rect x="40" y="150" width="170" height="56" rx="14" fill="hsl(${h} 55% 58%)"/>`;
   return `<svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" class="w-full h-full" aria-hidden="true">${defs(safeId, h)}${b}</svg>`;
 }
-const media = p => [ext(p.id, p.h, p.t), inn(p.id + 'i', p.h, p.t)];
+
+const media = p => {
+  if (Array.isArray(p.photos) && p.photos.length > 0) {
+    return p.photos.map(src => `<img src="${esc(src)}" class="w-full h-full object-cover" loading="lazy" alt="${esc(p.title)}">`);
+  }
+  return [ext(p.id, p.h, p.t), inn(p.id + 'i', p.h, p.t)];
+};
 
 function renderLocs() {
   $('#pills').innerHTML = LOCS.map(l => `<button class="chip ${l === S.loc ? 'on' : ''}" data-loc="${esc(l)}">${esc(l)}</button>`).join('');
   $('#locMenu').innerHTML = LOCS.map(l => `<button data-loc="${esc(l)}" class="w-full text-left px-3 py-2 rounded-xl font-bold ${l === S.loc ? 'soft' : ''}">${esc(l)}</button>`).join('');
+  $('#pLoc').innerHTML = LOCS.filter(l => l !== 'All Patna').map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
   $('#locLbl').textContent = S.loc;
 }
 function renderCats() {
   $('#cats').innerHTML = CATS.map(c => `<button data-cat="${esc(c.k)}" class="cat ${S.cat === c.k ? 'on' : ''}"><i class="${S.cat === c.k ? '' : 'soft'}">${ic(c.i, '!w-6 !h-6')}</i><b>${esc(c.l)}</b><small>${DATA.filter(p => p.t === c.k).length} listings</small></button>`).join('');
 }
 function renderFeat() {
-  const fList = DATA.slice(0, 3);
+  const fList = DATA.slice(0, 4);
   $('#feat').innerHTML = fList.map(p => `<button data-go="${esc(p.id)}" class="ft text-left text-white">${media(p)[0]}<div class="shade"></div><span class="absolute top-3 left-3 glassc rounded-full px-2.5 py-1 text-[10px] font-extrabold flex items-center gap-1">${ic('shield', '!w-3 !h-3')}Verified</span><div class="absolute bottom-3.5 left-4 right-4"><div class="hd font-extrabold text-xl">${esc(p.price)}<small class="text-xs font-semibold opacity-80">${esc(p.u)}</small></div><div class="text-[13px] font-bold leading-tight line-clamp-1">${esc(p.title)}</div><div class="text-[11px] opacity-80 mt-0.5">${esc(p.loc)}, Patna</div></div></button>`).join('');
 }
 function renderFeed() {
@@ -202,7 +363,7 @@ function renderFeed() {
   $('#feed').innerHTML = L.length ? L.map((p, n) => {
     const m = media(p), sv = S.saved.has(String(p.id));
     return `<article id="p${esc(p.id)}" class="pc" style="animation-delay:${n * 60}ms">
-    <div class="relative"><div class="gal noscroll">${m.map(x => `<div>${x}</div>`).join('')}</div>
+    <div class="relative"><div class="gal noscroll" style="aspect-ratio:16/10;height:auto">${m.map(x => `<div class="w-full h-full">${x}</div>`).join('')}</div>
       <span class="absolute top-3.5 left-3.5 glassc text-white rounded-full px-3 py-1.5 text-[11px] font-extrabold flex items-center gap-1">${ic('shield', '!w-3.5 !h-3.5')}Verified Owner</span>
       <button data-save="${esc(p.id)}" class="absolute top-3 right-3 w-10 h-10 rounded-full grid place-items-center glassc transition active:scale-90" style="color:${sv ? '#fb7185' : '#fff'}"><svg class="ic" style="fill:${sv ? '#fb7185' : 'none'}"><use href="#i-heart"/></svg></button>
       <span class="cnt absolute bottom-3.5 right-3.5 glassc text-white rounded-full px-2.5 py-1 text-[10px] font-bold">1/${m.length}</span>
@@ -216,23 +377,21 @@ function renderFeed() {
         <button data-act="call" data-ph="${esc(p.phone)}" data-title="${esc(p.title)}" class="btn call grad">${ic('phone')}Call Seller</button>
         <button data-act="wa" data-ph="${esc(p.phone)}" data-title="${esc(p.title)}" class="btn wa">${ic('chat')}WhatsApp</button>
       </div></div></article>`;
-  }).join('') : `<div class="pc p-9 text-center text-sm font-bold" style="color:var(--mut)">Koi listing nahi mili.<br><span style="color:var(--a)">Filter badal kar dekhein.</span></div>`;
+  }).join('') : `<div class="pc p-9 text-center text-sm font-bold" style="color:var(--mut)">Is area mein abhi koi listing nahi mili.<br><span style="color:var(--a)">Dusra area chunein ya apni listing free dalein!</span></div>`;
 }
 const refresh = () => { renderLocs(); renderCats(); renderFeed(); };
 
 $('#feed').addEventListener('scroll', e => {
   const g = e.target;
   if (g.classList.contains('gal')) {
-    g.parentElement.querySelector('.cnt').textContent = (Math.round(g.scrollLeft / g.clientWidth) + 1) + '/2';
+    const total = g.children.length || 1;
+    g.parentElement.querySelector('.cnt').textContent = (Math.round(g.scrollLeft / g.clientWidth) + 1) + '/' + total;
   }
 }, true);
 
-/* --- 5. PRIVACY POLICY MODAL --- */
+/* --- 7. PRIVACY POLICY MODAL --- */
 const PolM = $('#policyModal');
-function openPolicy() {
-  PolM.classList.add('open');
-  pushAppState('#privacy-policy');
-}
+function openPolicy() { PolM.classList.add('open'); pushAppState('#privacy-policy'); }
 function closePolicy() {
   if (PolM.classList.contains('open')) {
     PolM.classList.remove('open');
@@ -242,12 +401,9 @@ function closePolicy() {
 $('#openPolicyBtn').onclick = openPolicy;
 $('#openPolicyFooter').onclick = openPolicy;
 $('#polClose').onclick = closePolicy;
-$('#polAccept').onclick = () => {
-  $('#consentChk').checked = true;
-  closePolicy();
-};
+$('#polAccept').onclick = () => { $('#consentChk').checked = true; closePolicy(); };
 
-/* --- 6. HACK-PROOF FIREBASE PHONE OTP MODAL (WITH AUTO-RESET RECAPTCHA) --- */
+/* --- 8. FIREBASE PHONE OTP MODAL --- */
 const M = $('#modal'), steps = ['#s1', '#s2', '#s3'];
 function showOtpStep(n) {
   S.otpStep = n;
@@ -283,18 +439,9 @@ function resetRecaptcha() {
 $('#sendOtp').onclick = async () => {
   const nm = $('#uName').value.trim();
   const v = $('#phone').value;
-  if (nm.length < 2) {
-    $('#pErr').textContent = 'Kripya apna sahi naam likhein';
-    return;
-  }
-  if (!/^[6-9]\d{9}$/.test(v)) {
-    $('#pErr').textContent = 'Sahi 10-digit mobile number daalein';
-    return;
-  }
-  if (!$('#consentChk').checked) {
-    $('#pErr').textContent = 'Aage badhne ke liye Privacy Policy & Consent box par tick karein';
-    return;
-  }
+  if (nm.length < 2) { $('#pErr').textContent = 'Kripya apna sahi naam likhein'; return; }
+  if (!/^[6-9]\d{9}$/.test(v)) { $('#pErr').textContent = 'Sahi 10-digit mobile number daalein'; return; }
+  if (!$('#consentChk').checked) { $('#pErr').textContent = 'Aage badhne ke liye Privacy Policy & Consent box par tick karein'; return; }
 
   S.userName = nm;
   S.userPhone = v;
@@ -311,16 +458,8 @@ $('#sendOtp').onclick = async () => {
     pushAppState('#otp-step');
     setTimeout(() => $('.otp').focus(), 350);
   } catch (err) {
-    console.error("Firebase OTP Error:", err);
     resetRecaptcha();
-    const code = err.code || '';
-    if (code === 'auth/unauthorized-domain') {
-      $('#pErr').textContent = `Domain (${location.hostname}) ko Firebase Auth -> Settings -> Authorized domains mein add karein`;
-    } else if (code === 'auth/quota-exceeded' || code === 'auth/too-many-requests') {
-      $('#pErr').textContent = 'SMS limit poori ho gayi! Firebase Phone Auth mein Test Number (+91...) add karein.';
-    } else {
-      $('#pErr').textContent = err.message || 'OTP bhejne mein samasya aayi';
-    }
+    $('#pErr').textContent = err.message || 'OTP bhejne mein samasya aayi';
   }
 };
 
@@ -331,22 +470,14 @@ $$('.otp').forEach((o, i, a) => {
     o.value = o.value.replace(/\D/g, '');
     if (o.value && a[i + 1]) a[i + 1].focus();
   };
-  o.onkeydown = e => {
-    if (e.key === 'Backspace' && !o.value && a[i - 1]) a[i - 1].focus();
-  };
+  o.onkeydown = e => { if (e.key === 'Backspace' && !o.value && a[i - 1]) a[i - 1].focus(); };
 });
 
 $('#verify').onclick = async () => {
   const code = $$('.otp').map(o => o.value).join('');
-  if (code.length < 6) {
-    $('#oErr').textContent = '6-digit OTP poora daalein';
-    return;
-  }
-  if (!S.confirmResult) {
-    $('#oErr').textContent = 'Session expired. Dobara OTP bhejein.';
-    return;
-  }
-  $('#oErr').textContent = 'Verifying with Google Server...';
+  if (code.length < 6) { $('#oErr').textContent = '6-digit OTP poora daalein'; return; }
+  if (!S.confirmResult) { $('#oErr').textContent = 'Session expired. Dobara OTP bhejein.'; return; }
+  $('#oErr').textContent = 'Verifying...';
 
   try {
     const cred = await S.confirmResult.confirm(code);
@@ -354,7 +485,6 @@ $('#verify').onclick = async () => {
     S.uid = uid;
     S.logged = true;
 
-    // Save Verified User + Legal Consent Proof in Firestore
     await setDoc(doc(db, "users", uid), {
       uid,
       name: S.userName,
@@ -375,18 +505,14 @@ $('#verify').onclick = async () => {
       if (S.after) S.after();
     }, 900);
   } catch (e) {
-    console.error("Verify Error:", e);
     $('#oErr').textContent = 'Galat OTP code! Kripya sahi 6-digit code daalein.';
   }
 };
 
-/* --- 7. FREE LISTING SUBMISSION (WITH CONSENT & UID) --- */
+/* --- 9. FREE LISTING SUBMISSION (WITH FIXED 16:10 PHOTOS) --- */
 const PM = $('#postModal');
 function openPostModal() {
-  if (!S.freeAllowed) {
-    toast('Abhi nayi listing band hai');
-    return;
-  }
+  if (!S.freeAllowed) { toast('Abhi nayi listing band hai'); return; }
   $('#postErr').textContent = '';
   PM.classList.add('open');
   pushAppState('#post-listing');
@@ -394,10 +520,7 @@ function openPostModal() {
 $('#pClose').onclick = () => { PM.classList.remove('open'); if (location.hash === '#post-listing') history.back(); };
 
 $('#submitPost').onclick = async () => {
-  if (!auth.currentUser) {
-    $('#postErr').textContent = 'Pehle mobile number verify karein';
-    return;
-  }
+  if (!auth.currentUser) { $('#postErr').textContent = 'Pehle mobile number verify karein'; return; }
   const title = $('#pTitle').value.trim();
   const type = $('#pType').value;
   const loc = $('#pLoc').value;
@@ -405,15 +528,21 @@ $('#submitPost').onclick = async () => {
   const tags = $('#pTags').value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 5);
   const d = $('#pDesc').value.trim();
 
-  if (title.length < 5 || !price) {
+  if (title.length < 3 || !price) {
     $('#postErr').textContent = 'Sahi Title aur Kiraya/Price zaroor bharein';
+    return;
+  }
+  if (!S.photo1) {
+    $('#postErr').textContent = 'Kripya kam se kam Photo 1 (Main Photo) zaroor lagayein';
     return;
   }
   if (!$('#postConsentChk').checked) {
     $('#postErr').textContent = 'Listing consent box par tick karein';
     return;
   }
-  $('#postErr').textContent = 'Uploading securely...';
+  $('#postErr').textContent = 'Uploading photo & listing...';
+
+  const photos = [S.photo1, S.photo2].filter(Boolean);
 
   try {
     await addDoc(collection(db, "listings"), {
@@ -424,6 +553,7 @@ $('#submitPost').onclick = async () => {
       u: type === 'Plot' ? '' : '/mo',
       tags: tags.length ? tags : ['Verified', type],
       d: (d || `${title} in ${loc}, Patna.`).slice(0, 400),
+      photos,
       ownerUid: auth.currentUser.uid,
       ownerName: S.userName || 'Verified Owner',
       ownerPhone: S.userPhone || (auth.currentUser.phoneNumber || '').replace('+91', ''),
@@ -433,16 +563,19 @@ $('#submitPost').onclick = async () => {
       ago: 'Aaj',
       createdAt: Date.now()
     });
+
     PM.classList.remove('open');
     $('#pTitle').value = $('#pPrice').value = $('#pTags').value = $('#pDesc').value = '';
-    toast('Listing submit ho gayi! Admin approval ke baad live dikhegi.');
+    S.photo1 = S.photo2 = null;
+    $('#prev1').classList.add('hidden'); $('#ph1').classList.remove('hidden');
+    $('#prev2').classList.add('hidden'); $('#ph2').classList.remove('hidden');
+    toast('Photo ke saath Listing submit ho gayi! Admin approval ke baad live dikhegi.');
   } catch (err) {
-    console.error("Post Error:", err);
     $('#postErr').textContent = 'Error: ' + (err.message || 'Submission failed');
   }
 };
 
-/* --- 8. NAVIGATION & ACTIONS --- */
+/* --- 10. NAVIGATION & CLICK ACTIONS --- */
 const R = document.documentElement;
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-loc],[data-cat],[data-save],[data-act],[data-nav],[data-go],[data-pal],[data-mode]');
@@ -503,7 +636,11 @@ document.addEventListener('click', e => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } else if (n === 'alerts') {
-      toast('Real-time alerts chalu hain ✓');
+      if ('Notification' in window && Notification.permission === 'granted') {
+        toast('Notifications All Time Chalu Hain ✓');
+      } else {
+        $('#notifModal').classList.add('open');
+      }
     } else if (n === 'profile') {
       S.logged ? toast(`Verified User: +91 ${S.userPhone}`) : openModal();
     }
@@ -524,11 +661,18 @@ $('#palBtn').onclick = e => {
   $('#palMenu').classList.toggle('hidden');
   if (open) pushAppState('#theme-menu');
 };
-$('#bellBtn').onclick = () => toast('256-Bit Encrypted Connection Active ✓');
+$('#bellBtn').onclick = () => {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    toast('Notifications Chalu Hain ✓ Koi naya alert nahi');
+  } else {
+    $('#notifModal').classList.add('open');
+  }
+};
 $('#fab').onclick = () => { S.logged ? openPostModal() : openModal(openPostModal); };
 $('#q').oninput = e => { S.q = e.target.value.trim(); renderFeed(); };
 
 history.replaceState(getSnapshot(), '', '#home');
+renderLocs();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
