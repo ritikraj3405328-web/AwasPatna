@@ -1,6 +1,6 @@
 import { 
   db, auth, googleProvider, signInWithPopup,
-  collection, doc, onSnapshot, addDoc, setDoc, deleteDoc, getDoc, query, where,
+  collection, doc, onSnapshot, addDoc, setDoc, deleteDoc, getDoc, query, where, limit,
   RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut 
 } from "./firebase-config.js";
 
@@ -16,6 +16,14 @@ const LOCS = [
   'Gulzarbagh', 'Patna City', 'Didarganj', 'Fatuha', 'Khagaul', 'Neora', 'Bihta'
 ];
 
+const BUDGETS = [
+  { k: 'all', l: 'Sab Budget' },
+  { k: 'u5', l: '₹5,000 tak' },
+  { k: '5to10', l: '₹5k – ₹10k' },
+  { k: '10to20', l: '₹10k – ₹20k' },
+  { k: '20p', l: '₹20,000+' }
+];
+
 const CATS = [
   { k: 'Room', l: 'Room / PG', i: 'bed' },
   { k: 'Flat', l: 'Flat', i: 'flat' },
@@ -24,11 +32,12 @@ const CATS = [
 ];
 
 const FALLBACK_DATA = [
-  { id: 'd1', t: 'Room', h: 22, title: 'Furnished Single Room + Attached Bath', loc: 'Kankarbagh', price: '₹4,200', u: '/mo', ago: 'Aaj', tags: ['Furnished', 'WiFi', '24×7 Water'], d: 'Ground floor room, students aur working professionals ke liye ideal.', phone: '919812300001', ownerName: 'Verified Owner', photos: [], status: 'approved' },
-  { id: 'd2', t: 'Flat', h: 262, title: 'Premium 2 BHK, 3rd Floor', loc: 'Boring Road', price: '₹14,500', u: '/mo', ago: 'Aaj', tags: ['2 BHK', 'Lift', 'Parking'], d: 'Modular kitchen, power backup aur gated society. Family preferred.', phone: '919934500002', ownerName: 'Verified Owner', photos: [], status: 'approved' },
-  { id: 'd3', t: 'Plot', h: 140, title: '1,200 sq ft Residential Plot', loc: 'Rajendra Nagar', price: '₹48 Lakh', u: '', ago: 'Kal', tags: ['East Facing', 'Corner', 'Ready Registry'], d: '20 ft road, clear title aur registry ke liye taiyar.', phone: '919771100003', ownerName: 'Verified Owner', photos: [], status: 'approved' }
+  { id: 'd1', t: 'Room', h: 22, title: 'Furnished Single Room + Attached Bath', loc: 'Kankarbagh', price: '₹4,200', numPrice: 4200, u: '/mo', ago: 'Aaj', tags: ['Furnished', 'WiFi', '24×7 Water'], d: 'Ground floor room, students aur working professionals ke liye ideal.', phone: '919812300001', ownerName: 'Verified Owner', photos: [], status: 'approved' },
+  { id: 'd2', t: 'Flat', h: 262, title: 'Premium 2 BHK, 3rd Floor', loc: 'Boring Road', price: '₹14,500', numPrice: 14500, u: '/mo', ago: 'Aaj', tags: ['2 BHK', 'Lift', 'Parking'], d: 'Modular kitchen, power backup aur gated society. Family preferred.', phone: '919934500002', ownerName: 'Verified Owner', photos: [], status: 'approved' },
+  { id: 'd3', t: 'Plot', h: 140, title: '1,200 sq ft Residential Plot', loc: 'Rajendra Nagar', price: '₹48 Lakh', numPrice: 4800000, u: '', ago: 'Kal', tags: ['East Facing', 'Corner', 'Ready Registry'], d: '20 ft road, clear title aur registry ke liye taiyar.', phone: '919771100003', ownerName: 'Verified Owner', photos: [], status: 'approved' }
 ];
 
+const PAGE_SIZE = 10;
 let DATA = [...FALLBACK_DATA];
 let MY_LISTINGS = [];
 let myListingsUnsub = null;
@@ -36,7 +45,7 @@ let knownListingIds = new Set();
 let firstLoadDone = false;
 
 const S = { 
-  tab: 'home', cat: null, loc: 'All Patna', q: '', 
+  tab: 'home', cat: null, loc: 'All Patna', budget: 'all', q: '', pageLimit: PAGE_SIZE,
   saved: new Set(JSON.parse(localStorage.getItem('ap_saved') || '[]')), 
   savedOnly: false, logged: false, uid: null, userPhone: '', userName: '',
   after: null, otpStep: 0, confirmResult: null, freeAllowed: true,
@@ -50,6 +59,24 @@ const ic = (n, c = '') => `<svg class="ic ${c}"><use href="#i-${n}"/></svg>`;
 const esc = str => String(str ?? '').replace(/[&<>"']/g, m => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[m]));
+
+function parseNumericPrice(priceStr) {
+  const s = String(priceStr || '').toLowerCase();
+  const num = parseFloat(s.replace(/[^0-9.]/g, '')) || 0;
+  if (s.includes('cr')) return num * 10000000;
+  if (s.includes('lakh') || s.includes('lac')) return num * 100000;
+  if (s.includes('k')) return num * 1000;
+  return num;
+}
+
+function matchesBudget(numPrice, bKey) {
+  if (!bKey || bKey === 'all') return true;
+  if (bKey === 'u5') return numPrice > 0 && numPrice <= 5000;
+  if (bKey === '5to10') return numPrice > 5000 && numPrice <= 10000;
+  if (bKey === '10to20') return numPrice > 10000 && numPrice <= 20000;
+  if (bKey === '20p') return numPrice > 20000;
+  return true;
+}
 
 function formatWhatsAppAndCallPhone(raw) {
   const digits = String(raw || '').replace(/\D/g, '');
@@ -67,7 +94,7 @@ function toast(m) {
   toast.x = setTimeout(() => {
     t.style.opacity = 0;
     t.style.transform = 'translate(-50%,0)';
-  }, 2600);
+  }, 2500);
 }
 
 /* --- 0. 7-SECOND STRICT AUTO-REMOVE INSTALL POPUP --- */
@@ -81,7 +108,6 @@ function removeInstallPopup() {
   setTimeout(() => installPopup.remove(), 300);
 }
 
-// Hide & remove automatically after exactly 7 seconds (7000ms)
 const installTimer = setTimeout(removeInstallPopup, 7000);
 
 window.addEventListener('beforeinstallprompt', e => {
@@ -173,8 +199,8 @@ setTimeout(() => {
   updateNotifBadge();
 }, 8000);
 
-/* --- 2. FIXED 16:10 RATIO IMAGE AUTO-CROPPER & COMPRESSOR --- */
-function cropImageToFixedRatio(file, targetW = 800, targetH = 500, quality = 0.78) {
+/* --- 2. ULTRA-LIGHT WEBP 16:10 IMAGE AUTO-CROPPER (~50KB PER IMAGE) --- */
+function cropImageToFixedRatio(file, targetW = 720, targetH = 450, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => {
@@ -198,7 +224,12 @@ function cropImageToFixedRatio(file, targetW = 800, targetH = 500, quality = 0.7
         }
 
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        // Try modern WebP format first (3x smaller & faster than JPEG)
+        let out = canvas.toDataURL('image/webp', quality);
+        if (!out.startsWith('data:image/webp')) {
+          out = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(out);
       };
       img.onerror = reject;
       img.src = e.target.result;
@@ -212,7 +243,7 @@ if ($('#imgIn1')) {
   $('#imgIn1').onchange = async e => {
     const f = e.target.files?.[0];
     if (!f) return;
-    toast('Photo 1 ko 16:10 ratio mein set kiya ja raha hai...');
+    toast('Photo 1 fast WebP mein optimize ho rahi hai...');
     try {
       S.photo1 = await cropImageToFixedRatio(f);
       $('#prev1').src = S.photo1;
@@ -228,7 +259,7 @@ if ($('#imgIn2')) {
   $('#imgIn2').onchange = async e => {
     const f = e.target.files?.[0];
     if (!f) return;
-    toast('Photo 2 ko 16:10 ratio mein set kiya ja raha hai...');
+    toast('Photo 2 fast WebP mein optimize ho rahi hai...');
     try {
       S.photo2 = await cropImageToFixedRatio(f);
       $('#prev2').src = S.photo2;
@@ -240,9 +271,9 @@ if ($('#imgIn2')) {
   };
 }
 
-/* --- 3. FIREBASE REAL-TIME LISTENERS (PUBLIC FEED) --- */
+/* --- 3. FIREBASE REAL-TIME LISTENERS (BOUNDED QUERY FOR SPEED) --- */
 const HUES = { Room: 22, Flat: 262, Plot: 140, Commercial: 200 };
-const approvedQuery = query(collection(db, "listings"), where("status", "==", "approved"));
+const approvedQuery = query(collection(db, "listings"), where("status", "==", "approved"), limit(150));
 
 onSnapshot(approvedQuery, snap => {
   if (!snap.empty) {
@@ -255,6 +286,7 @@ onSnapshot(approvedQuery, snap => {
       knownListingIds.add(dc.id);
 
       const cleanOwnerPhone = formatWhatsAppAndCallPhone(d.ownerPhone);
+      const priceText = d.price || '₹5,000';
 
       live.push({
         id: dc.id,
@@ -262,7 +294,8 @@ onSnapshot(approvedQuery, snap => {
         h: Number(d.h) || HUES[d.type] || 22,
         title: d.title || 'Property in Patna',
         loc: d.loc || 'Boring Road',
-        price: d.price || '₹5,000',
+        price: priceText,
+        numPrice: d.numPrice || parseNumericPrice(priceText),
         u: d.u !== undefined ? d.u : (d.type === 'Plot' ? '' : '/mo'),
         ago: d.ago || 'Verified',
         tags: Array.isArray(d.tags) ? d.tags.slice(0, 6) : ['Verified', d.type || 'Room'],
@@ -297,7 +330,7 @@ onSnapshot(doc(db, "settings", "config"), snap => {
   }
 }, () => {});
 
-/* --- 4. FIREBASE AUTHENTICATION & OWNER'S PERSONAL LISTINGS --- */
+/* --- 4. FIREBASE AUTH + CLOUD SAVED FAVORITES SYNC + OWNER LISTINGS --- */
 onAuthStateChanged(auth, async user => {
   if (myListingsUnsub) {
     myListingsUnsub();
@@ -318,6 +351,12 @@ onAuthStateChanged(auth, async user => {
         const uData = uSnap.data();
         if (uData.phone) S.userPhone = String(uData.phone).replace(/\D/g, '').slice(-10);
         if (uData.name) S.userName = uData.name;
+        // Restore cloud-synced saved listings
+        if (Array.isArray(uData.savedListings)) {
+          uData.savedListings.forEach(id => S.saved.add(String(id)));
+          localStorage.setItem('ap_saved', JSON.stringify([...S.saved]));
+          renderFeed();
+        }
       }
     } catch (e) {}
 
@@ -350,7 +389,7 @@ onAuthStateChanged(auth, async user => {
 /* --- 5. BACK BUTTON HISTORY ROUTER --- */
 function getSnapshot() {
   return {
-    tab: S.tab, cat: S.cat, loc: S.loc, savedOnly: S.savedOnly,
+    tab: S.tab, cat: S.cat, loc: S.loc, budget: S.budget, savedOnly: S.savedOnly,
     modalOpen: $('#modal').classList.contains('open'),
     postOpen: $('#postModal').classList.contains('open'),
     policyOpen: $('#policyModal').classList.contains('open'),
@@ -387,10 +426,11 @@ window.addEventListener('popstate', e => {
     $('#palMenu').classList.add('hidden');
     return;
   }
-  const st = e.state || { tab: 'home', cat: null, loc: 'All Patna', savedOnly: false };
+  const st = e.state || { tab: 'home', cat: null, loc: 'All Patna', budget: 'all', savedOnly: false };
   S.tab = st.tab || 'home';
   S.cat = st.cat || null;
   S.loc = st.loc || 'All Patna';
+  S.budget = st.budget || 'all';
   S.savedOnly = Boolean(st.savedOnly);
   syncNavUI();
   refresh();
@@ -407,7 +447,7 @@ function syncNavUI() {
   }
 }
 
-/* --- 6. MEDIA (REAL PHOTOS OR ILLUSTRATED FALLBACK) --- */
+/* --- 6. MEDIA (ASYNC DECODING + LAZY LOADING FOR 60FPS SCROLL) --- */
 function defs(i, h) {
   return `<defs><linearGradient id="k${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="hsl(${h} 55% 24%)"/><stop offset=".6" stop-color="hsl(${h + 28} 80% 62%)"/><stop offset="1" stop-color="hsl(${h + 45} 90% 80%)"/></linearGradient><radialGradient id="r${i}" cx=".78" cy=".6" r=".55"><stop offset="0" stop-color="#fff6d0" stop-opacity=".95"/><stop offset="1" stop-color="#fff6d0" stop-opacity="0"/></radialGradient><linearGradient id="f${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="hsl(${h} 28% 92%)"/><stop offset="1" stop-color="hsl(${h} 26% 74%)"/></linearGradient><linearGradient id="w${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#ffb347"/></linearGradient><filter id="b${i}"><feGaussianBlur stdDeviation="3"/></filter></defs>`;
 }
@@ -433,13 +473,16 @@ function inn(i, h, t) {
 
 const media = p => {
   if (Array.isArray(p.photos) && p.photos.length > 0) {
-    return p.photos.map(src => `<img src="${esc(src)}" class="w-full h-full object-cover" loading="lazy" alt="${esc(p.title)}">`);
+    return p.photos.map(src => `<img src="${esc(src)}" class="w-full h-full object-cover" loading="lazy" decoding="async" alt="${esc(p.title)}">`);
   }
   return [ext(p.id, p.h || 22, p.t || p.type || 'Room'), inn(p.id + 'i', p.h || 22, p.t || p.type || 'Room')];
 };
 
 function renderLocs() {
   $('#pills').innerHTML = LOCS.map(l => `<button class="chip ${l === S.loc ? 'on' : ''}" data-loc="${esc(l)}">${esc(l)}</button>`).join('');
+  if ($('#budgetPills')) {
+    $('#budgetPills').innerHTML = BUDGETS.map(b => `<button class="chip !py-1 !px-3 !text-xs ${b.k === S.budget ? 'on' : ''}" data-budget="${esc(b.k)}">💰 ${esc(b.l)}</button>`).join('');
+  }
   $('#locMenu').innerHTML = LOCS.map(l => `<button data-loc="${esc(l)}" class="w-full text-left px-3 py-2 rounded-xl font-bold ${l === S.loc ? 'soft' : ''}">${esc(l)}</button>`).join('');
   $('#pLoc').innerHTML = LOCS.filter(l => l !== 'All Patna').map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
   $('#locLbl').textContent = S.loc;
@@ -526,7 +569,7 @@ function renderOwnerDashboard() {
         ? `<span class="tag" style="background:#dcfce7;color:#15803d">● LIVE ON APP</span>`
         : `<span class="tag" style="background:#fef3c7;color:#b45309">● PENDING APPROVAL</span>`;
       const thumb = (Array.isArray(item.photos) && item.photos[0])
-        ? `<img src="${esc(item.photos[0])}" class="w-20 h-20 rounded-2xl object-cover shrink-0">`
+        ? `<img src="${esc(item.photos[0])}" class="w-20 h-20 rounded-2xl object-cover shrink-0" loading="lazy" decoding="async">`
         : `<div class="w-20 h-20 rounded-2xl overflow-hidden shrink-0">${ext(item.id, 22, item.type || item.t || 'Room')}</div>`;
 
       return `
@@ -555,7 +598,7 @@ function renderOwnerDashboard() {
   `;
 }
 
-/* --- 8. MAIN FEED RENDER --- */
+/* --- 8. MAIN FEED RENDER (WITH BUDGET FILTER + SMART LOAD MORE PAGINATION) --- */
 function renderFeed() {
   if (S.tab === 'profile') {
     renderOwnerDashboard();
@@ -563,31 +606,44 @@ function renderFeed() {
   }
 
   const q = S.q.toLowerCase();
-  const L = DATA.filter(p => (!S.cat || p.t === S.cat) && (S.loc === 'All Patna' || p.loc === S.loc) && (!S.savedOnly || S.saved.has(String(p.id))) && (!q || (p.title + p.loc + p.t + p.d + p.tags.join(' ')).toLowerCase().includes(q)));
-  $('#count').textContent = L.length + ' mile';
-  $('#feed').innerHTML = L.length ? L.map((p, n) => {
-    const m = media(p), sv = S.saved.has(String(p.id));
-    const displayOwner = p.ownerName ? ` · Owner: ${p.ownerName}` : '';
-    const isMyOwnListing = (S.logged && ((S.uid && p.ownerUid === S.uid) || (S.userPhone && String(p.phone).endsWith(S.userPhone))));
+  const filteredAll = DATA.filter(p =>
+    (!S.cat || p.t === S.cat) &&
+    (S.loc === 'All Patna' || p.loc === S.loc) &&
+    matchesBudget(p.numPrice || parseNumericPrice(p.price), S.budget) &&
+    (!S.savedOnly || S.saved.has(String(p.id))) &&
+    (!q || (p.title + p.loc + p.t + p.d + p.tags.join(' ')).toLowerCase().includes(q))
+  );
 
-    return `<article id="p${esc(p.id)}" class="pc" style="animation-delay:${n * 60}ms">
-    <div class="relative"><div class="gal noscroll" style="aspect-ratio:16/10;height:auto">${m.map(x => `<div class="w-full h-full">${x}</div>`).join('')}</div>
-      <span class="absolute top-3.5 left-3.5 glassc text-white rounded-full px-3 py-1.5 text-[11px] font-extrabold flex items-center gap-1">${ic('shield', '!w-3.5 !h-3.5')}Verified Owner</span>
-      <button data-save="${esc(p.id)}" class="absolute top-3 right-3 w-10 h-10 rounded-full grid place-items-center glassc transition active:scale-90" style="color:${sv ? '#fb7185' : '#fff'}"><svg class="ic" style="fill:${sv ? '#fb7185' : 'none'}"><use href="#i-heart"/></svg></button>
-      <span class="cnt absolute bottom-3.5 right-3.5 glassc text-white rounded-full px-2.5 py-1 text-[10px] font-bold">1/${m.length}</span>
-      <div class="grad absolute bottom-3.5 left-3.5 rounded-2xl px-4 py-2 hd font-extrabold text-xl shadow-lg">${esc(p.price)}<small class="text-xs font-semibold opacity-85">${esc(p.u)}</small></div></div>
-    <div class="p-4 pt-4">
-      <h3 class="hd font-bold text-[17px] leading-snug">${esc(p.title)}</h3>
-      <p class="flex items-center gap-1 text-xs font-bold mt-1.5" style="color:var(--a)">${ic('pin', '!w-3.5 !h-3.5')}${esc(p.loc)}, Patna <span style="color:var(--mut)" class="font-semibold">· ${esc(p.ago)}${esc(displayOwner)}</span></p>
-      <div class="flex flex-wrap gap-1.5 mt-3">${p.tags.map(x => `<span class="tag soft">${esc(x)}</span>`).join('')}</div>
-      <p class="text-[13px] mt-3 leading-relaxed" style="color:var(--mut)">${esc(p.d)}</p>
-      <div class="flex gap-2.5 mt-4">
-        <button data-act="call" data-ph="${esc(p.phone)}" data-loc="${esc(p.loc)}" data-title="${esc(p.title)}" class="btn call grad">${ic('phone')}Call Seller</button>
-        <button data-act="wa" data-ph="${esc(p.phone)}" data-loc="${esc(p.loc)}" data-title="${esc(p.title)}" class="btn wa">${ic('chat')}WhatsApp</button>
-      </div>
-      ${isMyOwnListing ? `<button data-my-del="${esc(p.id)}" class="w-full mt-2.5 py-2 rounded-xl text-xs font-extrabold" style="background:#fee2e2;color:#b91c1c">Yeh Aapki Listing Hai · Bik Gayi To Delete Karein ✕</button>` : ''}
-    </div></article>`;
-  }).join('') : `<div class="pc p-9 text-center text-sm font-bold" style="color:var(--mut)">Is area mein abhi koi listing nahi mili.<br><span style="color:var(--a)">Dusra area chunein ya apni listing free dalein!</span></div>`;
+  $('#count').textContent = filteredAll.length + ' mile';
+  const visibleList = filteredAll.slice(0, S.pageLimit);
+  const remaining = filteredAll.length - visibleList.length;
+
+  $('#feed').innerHTML = visibleList.length ? (
+    visibleList.map((p, n) => {
+      const m = media(p), sv = S.saved.has(String(p.id));
+      const displayOwner = p.ownerName ? ` · Owner: ${p.ownerName}` : '';
+      const isMyOwnListing = (S.logged && ((S.uid && p.ownerUid === S.uid) || (S.userPhone && String(p.phone).endsWith(S.userPhone))));
+
+      return `<article id="p${esc(p.id)}" class="pc" style="animation-delay:${Math.min(n, 5) * 45}ms">
+      <div class="relative"><div class="gal noscroll" style="aspect-ratio:16/10;height:auto">${m.map(x => `<div class="w-full h-full">${x}</div>`).join('')}</div>
+        <span class="absolute top-3.5 left-3.5 glassc text-white rounded-full px-3 py-1.5 text-[11px] font-extrabold flex items-center gap-1">${ic('shield', '!w-3.5 !h-3.5')}Verified Owner</span>
+        <button data-save="${esc(p.id)}" class="absolute top-3 right-3 w-10 h-10 rounded-full grid place-items-center glassc transition active:scale-90" style="color:${sv ? '#fb7185' : '#fff'}"><svg class="ic" style="fill:${sv ? '#fb7185' : 'none'}"><use href="#i-heart"/></svg></button>
+        <span class="cnt absolute bottom-3.5 right-3.5 glassc text-white rounded-full px-2.5 py-1 text-[10px] font-bold">1/${m.length}</span>
+        <div class="grad absolute bottom-3.5 left-3.5 rounded-2xl px-4 py-2 hd font-extrabold text-xl shadow-lg">${esc(p.price)}<small class="text-xs font-semibold opacity-85">${esc(p.u)}</small></div></div>
+      <div class="p-4 pt-4">
+        <h3 class="hd font-bold text-[17px] leading-snug">${esc(p.title)}</h3>
+        <p class="flex items-center gap-1 text-xs font-bold mt-1.5" style="color:var(--a)">${ic('pin', '!w-3.5 !h-3.5')}${esc(p.loc)}, Patna <span style="color:var(--mut)" class="font-semibold">· ${esc(p.ago)}${esc(displayOwner)}</span></p>
+        <div class="flex flex-wrap gap-1.5 mt-3">${p.tags.map(x => `<span class="tag soft">${esc(x)}</span>`).join('')}</div>
+        <p class="text-[13px] mt-3 leading-relaxed" style="color:var(--mut)">${esc(p.d)}</p>
+        <div class="flex gap-2.5 mt-4">
+          <button data-act="call" data-ph="${esc(p.phone)}" data-loc="${esc(p.loc)}" data-title="${esc(p.title)}" class="btn call grad">${ic('phone')}Call Seller</button>
+          <button data-act="wa" data-ph="${esc(p.phone)}" data-loc="${esc(p.loc)}" data-title="${esc(p.title)}" class="btn wa">${ic('chat')}WhatsApp</button>
+        </div>
+        ${isMyOwnListing ? `<button data-my-del="${esc(p.id)}" class="w-full mt-2.5 py-2 rounded-xl text-xs font-extrabold" style="background:#fee2e2;color:#b91c1c">Yeh Aapki Listing Hai · Bik Gayi To Delete Karein ✕</button>` : ''}
+      </div></article>`;
+    }).join('') +
+    (remaining > 0 ? `<button data-load-more class="btn soft w-full !h-12 mb-4 font-extrabold text-sm">Aur Listings Dekhein (${remaining} baki) ↓</button>` : '')
+  ) : `<div class="pc p-9 text-center text-sm font-bold" style="color:var(--mut)">Is filter mein abhi koi listing nahi mili.<br><span style="color:var(--a)">Filter badlein ya apni listing free dalein!</span></div>`;
 }
 const refresh = () => { renderLocs(); renderCats(); renderFeed(); };
 
@@ -638,7 +694,6 @@ M.onclick = e => { if (e.target === M) closeModal(); };
 $('#phone').oninput = e => e.target.value = e.target.value.replace(/\D/g, '');
 if ($('#pOwnerPhone')) $('#pOwnerPhone').oninput = e => e.target.value = e.target.value.replace(/\D/g, '');
 
-// DIRECT GOOGLE LOGIN HANDLER (BYPASSES 10 SMS QUOTA LIMIT)
 if ($('#googleLoginBtn')) {
   $('#googleLoginBtn').onclick = async () => {
     const enteredName = $('#uName').value.trim();
@@ -669,6 +724,7 @@ if ($('#googleLoginBtn')) {
         name: finalName,
         email: user.email || '',
         phone: enteredPhone,
+        savedListings: [...S.saved],
         ver: true,
         blk: false,
         consentGiven: true,
@@ -761,6 +817,7 @@ $('#verify').onclick = async () => {
       uid,
       name: S.userName,
       phone: verified10,
+      savedListings: [...S.saved],
       ver: true,
       blk: false,
       consentGiven: true,
@@ -828,7 +885,7 @@ $('#submitPost').onclick = async () => {
     return;
   }
 
-  $('#postErr').textContent = 'Uploading photo & listing...';
+  $('#postErr').textContent = 'Uploading fast WebP photo & listing...';
   const photos = [S.photo1, S.photo2].filter(Boolean);
 
   try {
@@ -837,6 +894,7 @@ $('#submitPost').onclick = async () => {
       type,
       loc,
       price: price.slice(0, 25),
+      numPrice: parseNumericPrice(price),
       u: type === 'Plot' ? '' : '/mo',
       tags: tags.length ? tags : ['Verified', type],
       d: (d || `${title} in ${loc}, Patna.`).slice(0, 400),
@@ -865,10 +923,10 @@ $('#submitPost').onclick = async () => {
   }
 };
 
-/* --- 12. NAVIGATION, CALL/WHATSAPP & OWNER DELETE ACTIONS --- */
+/* --- 12. NAVIGATION, BUDGET FILTER, CLOUD SAVED & OWNER DELETE ACTIONS --- */
 const R = document.documentElement;
 document.addEventListener('click', async e => {
-  const t = e.target.closest('[data-loc],[data-cat],[data-save],[data-act],[data-nav],[data-go],[data-pal],[data-mode],[data-my-del],[data-dash-add],[data-dash-login],[data-dash-logout]');
+  const t = e.target.closest('[data-loc],[data-budget],[data-cat],[data-save],[data-act],[data-nav],[data-go],[data-pal],[data-mode],[data-my-del],[data-dash-add],[data-dash-login],[data-dash-logout],[data-load-more]');
   if (!e.target.closest('#palMenu,#palBtn')) $('#palMenu').classList.add('hidden');
   if (!e.target.closest('#locMenu,#locBtn')) $('#locMenu').classList.add('hidden');
   if (!t) return;
@@ -878,6 +936,17 @@ document.addEventListener('click', async e => {
   else if (d.mode !== undefined) {
     const cur = R.dataset.theme || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
     R.dataset.theme = cur === 'dark' ? 'light' : 'dark';
+  }
+  else if (d.loadMore !== undefined) {
+    S.pageLimit += PAGE_SIZE;
+    renderFeed();
+  }
+  else if (d.budget) {
+    S.budget = d.budget;
+    S.pageLimit = PAGE_SIZE;
+    S.tab = 'home';
+    syncNavUI();
+    refresh();
   }
   else if (d.dashLogin !== undefined) {
     openModal(() => { S.tab = 'profile'; syncNavUI(); renderFeed(); });
@@ -906,6 +975,7 @@ document.addEventListener('click', async e => {
   }
   else if (d.loc && !d.act) {
     S.loc = d.loc;
+    S.pageLimit = PAGE_SIZE;
     S.tab = 'home';
     $('#locMenu').classList.add('hidden');
     pushAppState(`#loc-${d.loc.toLowerCase().replace(/\s+/g, '-')}`);
@@ -914,13 +984,14 @@ document.addEventListener('click', async e => {
   }
   else if (d.cat) {
     S.cat = S.cat === d.cat ? null : d.cat;
+    S.pageLimit = PAGE_SIZE;
     S.tab = 'home';
     pushAppState(S.cat ? `#cat-${S.cat.toLowerCase()}` : '#home');
     syncNavUI();
     refresh();
   }
   else if (d.go) {
-    Object.assign(S, { tab: 'home', cat: null, loc: 'All Patna', q: '', savedOnly: false });
+    Object.assign(S, { tab: 'home', cat: null, loc: 'All Patna', budget: 'all', q: '', savedOnly: false });
     $('#q').value = '';
     pushAppState(`#listing-${d.go}`);
     syncNavUI();
@@ -930,8 +1001,16 @@ document.addEventListener('click', async e => {
   else if (d.save) {
     const id = String(d.save);
     S.saved.has(id) ? S.saved.delete(id) : S.saved.add(id);
-    localStorage.setItem('ap_saved', JSON.stringify([...S.saved]));
+    const savedArr = [...S.saved];
+    localStorage.setItem('ap_saved', JSON.stringify(savedArr));
     renderFeed();
+    // Sync Saved Favorites to Cloud Firestore if user is logged in
+    if (auth.currentUser) {
+      setDoc(doc(db, "users", auth.currentUser.uid), {
+        savedListings: savedArr,
+        consentGiven: true
+      }, { merge: true }).catch(() => {});
+    }
   }
   else if (d.act) {
     const cleanPh = formatWhatsAppAndCallPhone(d.ph);
@@ -956,6 +1035,7 @@ document.addEventListener('click', async e => {
     if (n === 'home' || n === 'saved' || n === 'profile') {
       S.tab = n;
       S.savedOnly = n === 'saved';
+      S.pageLimit = PAGE_SIZE;
       pushAppState(`#${n}`);
       syncNavUI();
       renderFeed();
@@ -996,7 +1076,19 @@ $('#bellBtn').onclick = () => {
   }
 };
 $('#fab').onclick = () => { S.logged ? openPostModal() : openModal(openPostModal); };
-$('#q').oninput = e => { S.q = e.target.value.trim(); if (S.tab === 'profile') S.tab = 'home'; syncNavUI(); renderFeed(); };
+
+// Debounced Search Input (160ms) for Zero Lag Typing
+let searchTimer = null;
+$('#q').oninput = e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    S.q = e.target.value.trim();
+    S.pageLimit = PAGE_SIZE;
+    if (S.tab === 'profile') S.tab = 'home';
+    syncNavUI();
+    renderFeed();
+  }, 160);
+};
 
 history.replaceState(getSnapshot(), '', '#home');
 renderLocs();
