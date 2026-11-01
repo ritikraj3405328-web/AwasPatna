@@ -233,6 +233,10 @@ $('#phone').oninput = e => e.target.value = e.target.value.replace(/\D/g, '');
 
 $('#sendOtp').onclick = async () => {
   const v = $('#phone').value;
+  if (!$('#consentChk').checked) {
+  $('#pErr').textContent = 'Aage badhne ke liye Terms & Consent box par tick karein';
+  return;
+  }
   const nm = $('#uName').value.trim() || 'Patna User';
   if (!/^[6-9]\d{9}$/.test(v)) {
     $('#pErr').textContent = 'Sahi 10-digit mobile number daalein';
