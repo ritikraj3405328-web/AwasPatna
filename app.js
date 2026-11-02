@@ -34,7 +34,7 @@ const CATS = [
 const FALLBACK_DATA = [
   { id: 'd1', t: 'Room', h: 22, title: 'Furnished Single Room + Attached Bath', loc: 'Kankarbagh', price: '₹4,200', numPrice: 4200, u: '/mo', ago: 'Aaj', tags: ['Furnished', 'WiFi', '24×7 Water'], d: 'Ground floor room, students aur working professionals ke liye ideal.', phone: '919812300001', ownerName: 'Verified Owner', photos: [], status: 'approved' },
   { id: 'd2', t: 'Flat', h: 262, title: 'Premium 2 BHK, 3rd Floor', loc: 'Boring Road', price: '₹14,500', numPrice: 14500, u: '/mo', ago: 'Aaj', tags: ['2 BHK', 'Lift', 'Parking'], d: 'Modular kitchen, power backup aur gated society. Family preferred.', phone: '919934500002', ownerName: 'Verified Owner', photos: [], status: 'approved' },
-  { id: 'd3', t: 'Plot', h: 140, title: '1,200 sq ft Residential Plot', loc: 'Rajendra Nagar', price: '₹48 Lakh', numPrice: 4800000, u: '', ago: 'Kal', tags: ['East Facing', 'Corner', 'Ready Registry'], d: '20 ft road, clear title aur registry ke liye taiyar.', phone: '919771100003', ownerName: 'Verified Owner', photos: [], status: 'approved' }
+  { id: 'd3', t: 'Plot', h: 140, title: '1,200 sq ft Residential Plot', loc: 'Rajendra Nagar', price: '₹48 Lakh', numPrice: 4800000, u: '', ago: 'Kal', tags: ['East Facing', 'Corner', 'Ready Registry'], d: '20 ft road, clear title aur registry ke liye taiyar.', phone: '919771100003', ownerName: 'Verified Owner', photos: [], status: [], status: 'approved' }
 ];
 
 const PAGE_SIZE = 10;
@@ -161,7 +161,7 @@ async function askNotificationPermission() {
       toast('Notifications Chalu Ho Gayi ✓');
       sendLocalNotification('AwasPatna Alerts Active ✓', 'Ab Patna mein naye Room, Flat ya Plot aate hi aapko turant khabar milegi!');
       if (auth.currentUser) {
-        setDoc(doc(db, "users", auth.currentUser.uid), { notifEnabled: true, notifUpdatedAt: Date.now() }, { merge: true }).catch(() => {});
+        setDoc(doc(db, "users", auth.currentUser.uid), { notifEnabled: true, notifUpdatedAt: Date.now(), consentGiven: true, blk: false }, { merge: true }).catch(() => {});
       }
     } else {
       toast('Notification permission allow nahi ki gayi');
@@ -224,7 +224,6 @@ function cropImageToFixedRatio(file, targetW = 720, targetH = 450, quality = 0.7
         }
 
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
-        // Try modern WebP format first (3x smaller & faster than JPEG)
         let out = canvas.toDataURL('image/webp', quality);
         if (!out.startsWith('data:image/webp')) {
           out = canvas.toDataURL('image/jpeg', quality);
@@ -351,7 +350,6 @@ onAuthStateChanged(auth, async user => {
         const uData = uSnap.data();
         if (uData.phone) S.userPhone = String(uData.phone).replace(/\D/g, '').slice(-10);
         if (uData.name) S.userName = uData.name;
-        // Restore cloud-synced saved listings
         if (Array.isArray(uData.savedListings)) {
           uData.savedListings.forEach(id => S.saved.add(String(id)));
           localStorage.setItem('ap_saved', JSON.stringify([...S.saved]));
@@ -598,7 +596,7 @@ function renderOwnerDashboard() {
   `;
 }
 
-/* --- 8. MAIN FEED RENDER (WITH BUDGET FILTER + SMART LOAD MORE PAGINATION) --- */
+/* --- 8. MAIN FEED RENDER (SECURE: NO PHONE IN DOM FOR UNLOGGED USERS) --- */
 function renderFeed() {
   if (S.tab === 'profile') {
     renderOwnerDashboard();
@@ -636,8 +634,8 @@ function renderFeed() {
         <div class="flex flex-wrap gap-1.5 mt-3">${p.tags.map(x => `<span class="tag soft">${esc(x)}</span>`).join('')}</div>
         <p class="text-[13px] mt-3 leading-relaxed" style="color:var(--mut)">${esc(p.d)}</p>
         <div class="flex gap-2.5 mt-4">
-          <button data-act="call" data-ph="${esc(p.phone)}" data-loc="${esc(p.loc)}" data-title="${esc(p.title)}" class="btn call grad">${ic('phone')}Call Seller</button>
-          <button data-act="wa" data-ph="${esc(p.phone)}" data-loc="${esc(p.loc)}" data-title="${esc(p.title)}" class="btn wa">${ic('chat')}WhatsApp</button>
+          <button data-act="call" data-id="${esc(p.id)}" class="btn call grad">${ic('phone')}Call Seller</button>
+          <button data-act="wa" data-id="${esc(p.id)}" class="btn wa">${ic('chat')}WhatsApp</button>
         </div>
         ${isMyOwnListing ? `<button data-my-del="${esc(p.id)}" class="w-full mt-2.5 py-2 rounded-xl text-xs font-extrabold" style="background:#fee2e2;color:#b91c1c">Yeh Aapki Listing Hai · Bik Gayi To Delete Karein ✕</button>` : ''}
       </div></article>`;
@@ -1004,22 +1002,23 @@ document.addEventListener('click', async e => {
     const savedArr = [...S.saved];
     localStorage.setItem('ap_saved', JSON.stringify(savedArr));
     renderFeed();
-    // Sync Saved Favorites to Cloud Firestore if user is logged in
     if (auth.currentUser) {
       setDoc(doc(db, "users", auth.currentUser.uid), {
         savedListings: savedArr,
-        consentGiven: true
+        consentGiven: true,
+        blk: false
       }, { merge: true }).catch(() => {});
     }
   }
   else if (d.act) {
-    const cleanPh = formatWhatsAppAndCallPhone(d.ph);
+    const item = DATA.find(x => String(x.id) === String(d.id));
+    const cleanPh = formatWhatsAppAndCallPhone(item?.phone);
     if (!cleanPh) {
       toast('Is listing mein owner ka number uplabdh nahi hai');
       return;
     }
-    const ttl = d.title || 'Property';
-    const area = d.loc || 'Patna';
+    const ttl = item?.title || 'Property';
+    const area = item?.loc || 'Patna';
     const go = () => {
       if (d.act === 'call') {
         location.href = 'tel:+' + cleanPh;
@@ -1028,7 +1027,7 @@ document.addEventListener('click', async e => {
         window.open(`https://wa.me/${cleanPh}?text=` + encodeURIComponent(msg), '_blank', 'noopener');
       }
     };
-    S.logged ? go() : openModal(go);
+    (S.logged && auth.currentUser) ? go() : openModal(go);
   }
   else if (d.nav) {
     const n = d.nav;
@@ -1075,9 +1074,8 @@ $('#bellBtn').onclick = () => {
     $('#notifModal')?.classList.add('open');
   }
 };
-$('#fab').onclick = () => { S.logged ? openPostModal() : openModal(openPostModal); };
+$('#fab').onclick = () => { (S.logged && auth.currentUser) ? openPostModal() : openModal(openPostModal); };
 
-// Debounced Search Input (160ms) for Zero Lag Typing
 let searchTimer = null;
 $('#q').oninput = e => {
   clearTimeout(searchTimer);
