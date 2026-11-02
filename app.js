@@ -31,14 +31,8 @@ const CATS = [
   { k: 'Commercial', l: 'Commercial', i: 'shop' }
 ];
 
-const FALLBACK_DATA = [
-  { id: 'd1', t: 'Room', h: 22, title: 'Furnished Single Room + Attached Bath', loc: 'Kankarbagh', price: '₹4,200', numPrice: 4200, u: '/mo', ago: 'Aaj', tags: ['Furnished', 'WiFi', '24×7 Water'], d: 'Ground floor room, students aur working professionals ke liye ideal.', phone: '919812300001', ownerName: 'Verified Owner', photos: [], status: 'approved' },
-  { id: 'd2', t: 'Flat', h: 262, title: 'Premium 2 BHK, 3rd Floor', loc: 'Boring Road', price: '₹14,500', numPrice: 14500, u: '/mo', ago: 'Aaj', tags: ['2 BHK', 'Lift', 'Parking'], d: 'Modular kitchen, power backup aur gated society. Family preferred.', phone: '919934500002', ownerName: 'Verified Owner', photos: [], status: 'approved' },
-  { id: 'd3', t: 'Plot', h: 140, title: '1,200 sq ft Residential Plot', loc: 'Rajendra Nagar', price: '₹48 Lakh', numPrice: 4800000, u: '', ago: 'Kal', tags: ['East Facing', 'Corner', 'Ready Registry'], d: '20 ft road, clear title aur registry ke liye taiyar.', phone: '919771100003', ownerName: 'Verified Owner', photos: [], status: [], status: 'approved' }
-];
-
 const PAGE_SIZE = 10;
-let DATA = [...FALLBACK_DATA];
+let DATA = [];
 let MY_LISTINGS = [];
 let myListingsUnsub = null;
 let knownListingIds = new Set();
@@ -161,7 +155,7 @@ async function askNotificationPermission() {
       toast('Notifications Chalu Ho Gayi ✓');
       sendLocalNotification('AwasPatna Alerts Active ✓', 'Ab Patna mein naye Room, Flat ya Plot aate hi aapko turant khabar milegi!');
       if (auth.currentUser) {
-        setDoc(doc(db, "users", auth.currentUser.uid), { notifEnabled: true, notifUpdatedAt: Date.now(), consentGiven: true, blk: false }, { merge: true }).catch(() => {});
+        setDoc(doc(db, "users", auth.currentUser.uid), { notifEnabled: true, notifUpdatedAt: Date.now() }, { merge: true }).catch(() => {});
       }
     } else {
       toast('Notification permission allow nahi ki gayi');
@@ -199,7 +193,7 @@ setTimeout(() => {
   updateNotifBadge();
 }, 8000);
 
-/* --- 2. ULTRA-LIGHT WEBP 16:10 IMAGE AUTO-CROPPER (~50KB PER IMAGE) --- */
+/* --- 2. ULTRA-LIGHT WEBP 16:10 IMAGE AUTO-CROPPER --- */
 function cropImageToFixedRatio(file, targetW = 720, targetH = 450, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -270,7 +264,7 @@ if ($('#imgIn2')) {
   };
 }
 
-/* --- 3. FIREBASE REAL-TIME LISTENERS (BOUNDED QUERY FOR SPEED) --- */
+/* --- 3. FIREBASE REAL-TIME LISTENERS --- */
 const HUES = { Room: 22, Flat: 262, Plot: 140, Commercial: 200 };
 const approvedQuery = query(collection(db, "listings"), where("status", "==", "approved"), limit(150));
 
@@ -329,7 +323,7 @@ onSnapshot(doc(db, "settings", "config"), snap => {
   }
 }, () => {});
 
-/* --- 4. FIREBASE AUTH + CLOUD SAVED FAVORITES SYNC + OWNER LISTINGS --- */
+/* --- 4. FIREBASE AUTH + CLOUD SAVED FAVORITES + OWNER LISTINGS --- */
 onAuthStateChanged(auth, async user => {
   if (myListingsUnsub) {
     myListingsUnsub();
@@ -445,7 +439,7 @@ function syncNavUI() {
   }
 }
 
-/* --- 6. MEDIA (ASYNC DECODING + LAZY LOADING FOR 60FPS SCROLL) --- */
+/* --- 6. MEDIA (REAL PHOTOS OR ILLUSTRATED FALLBACK) --- */
 function defs(i, h) {
   return `<defs><linearGradient id="k${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="hsl(${h} 55% 24%)"/><stop offset=".6" stop-color="hsl(${h + 28} 80% 62%)"/><stop offset="1" stop-color="hsl(${h + 45} 90% 80%)"/></linearGradient><radialGradient id="r${i}" cx=".78" cy=".6" r=".55"><stop offset="0" stop-color="#fff6d0" stop-opacity=".95"/><stop offset="1" stop-color="#fff6d0" stop-opacity="0"/></radialGradient><linearGradient id="f${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="hsl(${h} 28% 92%)"/><stop offset="1" stop-color="hsl(${h} 26% 74%)"/></linearGradient><linearGradient id="w${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#ffb347"/></linearGradient><filter id="b${i}"><feGaussianBlur stdDeviation="3"/></filter></defs>`;
 }
@@ -490,7 +484,7 @@ function renderCats() {
 }
 function renderFeat() {
   const fList = DATA.slice(0, 4);
-  $('#feat').innerHTML = fList.map(p => `<button data-go="${esc(p.id)}" class="ft text-left text-white">${media(p)[0]}<div class="shade"></div><span class="absolute top-3 left-3 glassc rounded-full px-2.5 py-1 text-[10px] font-extrabold flex items-center gap-1">${ic('shield', '!w-3 !h-3')}Verified</span><div class="absolute bottom-3.5 left-4 right-4"><div class="hd font-extrabold text-xl">${esc(p.price)}<small class="text-xs font-semibold opacity-80">${esc(p.u)}</small></div><div class="text-[13px] font-bold leading-tight line-clamp-1">${esc(p.title)}</div><div class="text-[11px] opacity-80 mt-0.5">${esc(p.loc)}, Patna</div></div></button>`).join('');
+  $('#feat').innerHTML = fList.length ? fList.map(p => `<button data-go="${esc(p.id)}" class="ft text-left text-white">${media(p)[0]}<div class="shade"></div><span class="absolute top-3 left-3 glassc rounded-full px-2.5 py-1 text-[10px] font-extrabold flex items-center gap-1">${ic('shield', '!w-3 !h-3')}Verified</span><div class="absolute bottom-3.5 left-4 right-4"><div class="hd font-extrabold text-xl">${esc(p.price)}<small class="text-xs font-semibold opacity-80">${esc(p.u)}</small></div><div class="text-[13px] font-bold leading-tight line-clamp-1">${esc(p.title)}</div><div class="text-[11px] opacity-80 mt-0.5">${esc(p.loc)}, Patna</div></div></button>`).join('') : `<div class="pc p-5 w-full text-center text-xs font-bold" style="color:var(--mut)">Nayi verified listings jald dikhengi · '+' button se apni property free dalein!</div>`;
 }
 
 /* --- 7. OWNER PERSONAL DASHBOARD --- */
@@ -596,7 +590,7 @@ function renderOwnerDashboard() {
   `;
 }
 
-/* --- 8. MAIN FEED RENDER (SECURE: NO PHONE IN DOM FOR UNLOGGED USERS) --- */
+/* --- 8. MAIN FEED RENDER --- */
 function renderFeed() {
   if (S.tab === 'profile') {
     renderOwnerDashboard();
@@ -634,14 +628,14 @@ function renderFeed() {
         <div class="flex flex-wrap gap-1.5 mt-3">${p.tags.map(x => `<span class="tag soft">${esc(x)}</span>`).join('')}</div>
         <p class="text-[13px] mt-3 leading-relaxed" style="color:var(--mut)">${esc(p.d)}</p>
         <div class="flex gap-2.5 mt-4">
-          <button data-act="call" data-id="${esc(p.id)}" class="btn call grad">${ic('phone')}Call Seller</button>
-          <button data-act="wa" data-id="${esc(p.id)}" class="btn wa">${ic('chat')}WhatsApp</button>
+          <button data-act="call" data-ph="${esc(p.phone)}" data-loc="${esc(p.loc)}" data-title="${esc(p.title)}" class="btn call grad">${ic('phone')}Call Seller</button>
+          <button data-act="wa" data-ph="${esc(p.phone)}" data-loc="${esc(p.loc)}" data-title="${esc(p.title)}" class="btn wa">${ic('chat')}WhatsApp</button>
         </div>
         ${isMyOwnListing ? `<button data-my-del="${esc(p.id)}" class="w-full mt-2.5 py-2 rounded-xl text-xs font-extrabold" style="background:#fee2e2;color:#b91c1c">Yeh Aapki Listing Hai · Bik Gayi To Delete Karein ✕</button>` : ''}
       </div></article>`;
     }).join('') +
     (remaining > 0 ? `<button data-load-more class="btn soft w-full !h-12 mb-4 font-extrabold text-sm">Aur Listings Dekhein (${remaining} baki) ↓</button>` : '')
-  ) : `<div class="pc p-9 text-center text-sm font-bold" style="color:var(--mut)">Is filter mein abhi koi listing nahi mili.<br><span style="color:var(--a)">Filter badlein ya apni listing free dalein!</span></div>`;
+  ) : `<div class="pc p-9 text-center text-sm font-bold" style="color:var(--mut)">Abhi is filter mein koi listing nahi hai.<br><span style="color:var(--a)">Niche '+' button dabakar pehli listing free dalein!</span></div>`;
 }
 const refresh = () => { renderLocs(); renderCats(); renderFeed(); };
 
@@ -720,7 +714,6 @@ if ($('#googleLoginBtn')) {
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         name: finalName,
-        email: user.email || '',
         phone: enteredPhone,
         savedListings: [...S.saved],
         ver: true,
@@ -1005,20 +998,18 @@ document.addEventListener('click', async e => {
     if (auth.currentUser) {
       setDoc(doc(db, "users", auth.currentUser.uid), {
         savedListings: savedArr,
-        consentGiven: true,
-        blk: false
+        consentGiven: true
       }, { merge: true }).catch(() => {});
     }
   }
   else if (d.act) {
-    const item = DATA.find(x => String(x.id) === String(d.id));
-    const cleanPh = formatWhatsAppAndCallPhone(item?.phone);
+    const cleanPh = formatWhatsAppAndCallPhone(d.ph);
     if (!cleanPh) {
       toast('Is listing mein owner ka number uplabdh nahi hai');
       return;
     }
-    const ttl = item?.title || 'Property';
-    const area = item?.loc || 'Patna';
+    const ttl = d.title || 'Property';
+    const area = d.loc || 'Patna';
     const go = () => {
       if (d.act === 'call') {
         location.href = 'tel:+' + cleanPh;
@@ -1027,7 +1018,7 @@ document.addEventListener('click', async e => {
         window.open(`https://wa.me/${cleanPh}?text=` + encodeURIComponent(msg), '_blank', 'noopener');
       }
     };
-    (S.logged && auth.currentUser) ? go() : openModal(go);
+    S.logged ? go() : openModal(go);
   }
   else if (d.nav) {
     const n = d.nav;
@@ -1074,7 +1065,7 @@ $('#bellBtn').onclick = () => {
     $('#notifModal')?.classList.add('open');
   }
 };
-$('#fab').onclick = () => { (S.logged && auth.currentUser) ? openPostModal() : openModal(openPostModal); };
+$('#fab').onclick = () => { S.logged ? openPostModal() : openModal(openPostModal); };
 
 let searchTimer = null;
 $('#q').oninput = e => {
