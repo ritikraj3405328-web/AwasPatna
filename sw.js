@@ -1,5 +1,4 @@
-// sw.js (Network-First + Push Notification Handler)
-const CACHE_NAME = 'awaspatna-app-v6';
+const CACHE_NAME = 'awaspatna-app-v8';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -16,7 +15,6 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Jab customer notification par click kare to seedha AwasPatna App khule
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(
