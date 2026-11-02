@@ -1,4 +1,3 @@
-// firebase-config.js (FOR USER APP: awaspatna-app - FAST CACHE ENABLED)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { 
   initializeFirestore, persistentLocalCache, getFirestore,
@@ -20,7 +19,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Instant Offline & Local Cache for 5x Faster Loading
 let db;
 try {
   db = initializeFirestore(app, { localCache: persistentLocalCache() });
