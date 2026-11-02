@@ -7,12 +7,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>AwasPatna – Patna’s Room & Property Finder</title>
-<!-- FAST DNS & SERVER PRECONNECT -->
-<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="icon" type="image/svg+xml" href="logo.svg">
-<link rel="apple-touch-icon" href="logo.svg">
 <link rel="manifest" href="manifest.json">
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
@@ -41,31 +35,35 @@
 <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></symbol>
 </defs></svg>
 
-<!-- 7-SECOND AUTO-REMOVE INSTALL POPUP BAR -->
-<div id="userInstallPopup" class="fixed top-16 left-1/2 -translate-x-1/2 z-[80] w-[92%] max-w-sm p-2.5 rounded-2xl shadow-2xl flex items-center justify-between gap-2 transition-all duration-300" style="background:#14142b;color:#fff;border:1px solid rgba(255,255,255,.2)">
+<!-- 7-SECOND AUTO-HIDE SMALL INSTALL POPUP -->
+<div id="userInstallPopup" class="fixed top-16 left-1/2 -translate-x-1/2 z-[80] w-[92%] max-w-sm p-3 rounded-2xl shadow-2xl flex items-center justify-between gap-2.5 transition-all duration-300" style="background:#14142b;color:#fff;border:1px solid rgba(255,255,255,.18)">
   <div class="flex items-center gap-2.5 min-w-0">
-    <img src="logo.svg" class="w-9 h-9 rounded-xl shrink-0" alt="AwasPatna">
+    <span class="grad w-9 h-9 rounded-xl grid place-items-center shrink-0"><svg class="ic !w-4 !h-4"><use href="#i-dl"/></svg></span>
     <div class="min-w-0">
       <div class="hd font-extrabold text-xs truncate">AwasPatna App Install Karein</div>
-      <div class="text-[10px] opacity-80 truncate">Fast mobile app experience (7s)</div>
+      <div class="text-[10px] opacity-80 truncate">Bina browser ke fast mobile app chalayein</div>
     </div>
   </div>
   <div class="flex items-center gap-1.5 shrink-0">
-    <button id="popupInstallBtn" class="grad px-3 py-1.5 rounded-xl text-[11px] font-extrabold">Install</button>
-    <button id="popupCloseBtn" class="w-7 h-7 rounded-lg grid place-items-center bg-white/10 text-xs">✕</button>
+    <button onclick="window.triggerUserInstall()" class="grad px-3 py-1.5 rounded-xl text-[11px] font-extrabold">Install</button>
+    <button onclick="document.getElementById('userInstallPopup').classList.add('hidden')" class="w-7 h-7 rounded-lg grid place-items-center bg-white/10 text-xs">✕</button>
   </div>
 </div>
 
 <div class="relative max-w-md mx-auto min-h-screen">
 
-  <!-- 1. CLEAN STICKY HEADER -->
-  <header class="bar px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-2.5">
-      <img src="logo.svg" class="w-9 h-9 rounded-xl shadow-md shrink-0" alt="AwasPatna Logo">
-      <span id="appName" class="hd text-[19px] font-extrabold tracking-tight">AwasPatna</span>
+  <!-- 1. STICKY HEADER WITH INSTALL BUTTON -->
+  <header class="bar px-3.5 py-3 flex items-center justify-between gap-1">
+    <div class="flex items-center gap-2 min-w-0">
+      <svg viewBox="0 0 40 40" class="w-8 h-8 shrink-0" aria-hidden="true"><rect width="40" height="40" rx="13" fill="#fff"/><path d="M9 17l4 3 7-8 7 8 4-3-2 9H11z" fill="var(--a)"/><path d="M12 28h16v4a1 1 0 01-1 1H13a1 1 0 01-1-1z" fill="var(--b)"/><rect x="18" y="29" width="4" height="4" rx="1" fill="#fff"/></svg>
+      <span id="appName" class="hd text-[18px] font-extrabold tracking-tight truncate">AwasPatna</span>
     </div>
-    <div class="flex items-center gap-1.5 relative">
-      <button id="locBtn" class="glassc flex items-center gap-1 text-xs font-bold rounded-full px-3 h-9 max-w-[128px]"><svg class="ic !w-3.5 !h-3.5"><use href="#i-pin"/></svg><span id="locLbl" class="truncate">All Patna</span><svg class="ic !w-3 !h-3"><use href="#i-chev"/></svg></button>
+    <div class="flex items-center gap-1.5 relative shrink-0">
+      <!-- TOP HEADER SMALL INSTALL BUTTON -->
+      <button onclick="window.triggerUserInstall()" class="glassc flex items-center gap-1 text-[11px] font-extrabold rounded-full px-2.5 h-9" title="Install App">
+        <svg class="ic !w-3.5 !h-3.5"><use href="#i-dl"/></svg><span>App</span>
+      </button>
+      <button id="locBtn" class="glassc flex items-center gap-1 text-[11px] font-bold rounded-full px-2.5 h-9 max-w-[115px]"><svg class="ic !w-3 !h-3"><use href="#i-pin"/></svg><span id="locLbl" class="truncate">All Patna</span><svg class="ic !w-2.5 !h-2.5"><use href="#i-chev"/></svg></button>
       <button id="palBtn" class="glassc w-9 h-9 rounded-full grid place-items-center" aria-label="Theme"><svg class="ic !w-4 !h-4"><use href="#i-pal"/></svg></button>
       <button id="bellBtn" class="pulse glassc w-9 h-9 rounded-full grid place-items-center" aria-label="Notifications"><svg class="ic !w-4 !h-4"><use href="#i-bell"/></svg></button>
       <div id="locMenu" class="hidden absolute right-0 top-11 w-56 max-h-80 overflow-y-auto p-1.5 text-sm rounded-2xl z-50 menu-box"></div>
@@ -100,14 +98,8 @@
   </div>
 
   <main class="pb-40">
-    <!-- AREA PILLS -->
-    <div id="pills" class="noscroll flex gap-2 overflow-x-auto px-4 pt-4 pb-1.5"></div>
-
-    <!-- BUDGET / PRICE FILTER PILLS -->
-    <div id="budgetPills" class="noscroll flex gap-2 overflow-x-auto px-4 pt-1.5 pb-2"></div>
-
-    <!-- 3. CATEGORIES -->
-    <div id="cats" class="noscroll flex gap-3 overflow-x-auto px-4 pt-3 pb-4"></div>
+    <div id="pills" class="noscroll flex gap-2 overflow-x-auto px-4 pt-4 pb-2"></div>
+    <div id="cats" class="noscroll flex gap-3 overflow-x-auto px-4 pt-4 pb-4"></div>
 
     <!-- FEATURED -->
     <div class="px-4 mb-3 flex items-end justify-between"><h2 class="hd font-extrabold text-lg">Featured</h2><span class="text-xs font-bold" style="color:var(--a)">Swipe karein →</span></div>
@@ -140,44 +132,29 @@
   </nav>
 </div>
 
-<!-- 6. LOGIN MODAL (GOOGLE DIRECT LOGIN + PHONE OTP) -->
+<!-- 6. FIREBASE OTP MODAL -->
 <div id="modal" class="modal fixed inset-0 z-50 flex items-end justify-center p-3" style="background:rgba(8,6,24,.6);backdrop-filter:blur(6px)">
   <div class="sheet relative w-full max-w-md overflow-hidden text-center" style="background:var(--card);border-radius:30px;border:1px solid var(--line)">
-    <div class="grad pt-6 pb-8 relative">
+    <div class="grad pt-7 pb-9 relative">
       <button id="mClose" class="glassc absolute top-4 right-4 w-9 h-9 rounded-full grid place-items-center" aria-label="Close"><svg class="ic !w-4 !h-4"><use href="#i-x"/></svg></button>
-      <div class="glassc w-14 h-14 rounded-2xl mx-auto grid place-items-center"><svg id="mIcon" class="ic !w-7 !h-7"><use href="#i-shield"/></svg></div>
+      <div class="glassc w-16 h-16 rounded-3xl mx-auto grid place-items-center"><svg id="mIcon" class="ic !w-8 !h-8"><use href="#i-shield"/></svg></div>
     </div>
-    <div class="px-5 pb-6 -mt-3 rounded-t-[26px] relative" style="background:var(--card)">
+    <div class="px-5 pb-7 -mt-3 rounded-t-[26px] relative" style="background:var(--card)">
       <div id="recaptcha-container"></div>
-      <div id="s1" class="pt-5">
-        <h3 class="hd font-extrabold text-xl">Account Verify Karein</h3>
-        <p class="text-xs mt-1" style="color:var(--mut)">Naam aur WhatsApp/Call number bharein, phir Google ya OTP se verify karein.</p>
-
-        <input id="uName" type="text" maxlength="50" placeholder="Aapka Pura Naam (jaise Ritik Raj)" class="mt-3.5 w-full h-12 px-4 rounded-2xl outline-none font-bold text-sm" style="background:var(--bg);border:1.5px solid var(--line);color:var(--tx)">
-        <div class="mt-2.5 flex items-center px-4 h-12 gap-2 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--a)]" style="background:var(--bg);border:1.5px solid var(--line)">
+      <div id="s1" class="pt-6">
+        <h3 class="hd font-extrabold text-2xl">Number verify karein</h3>
+        <p class="text-sm mt-1" style="color:var(--mut)">Owner se baat karne ya listing daalne ke liye login karein.</p>
+        <input id="uName" type="text" maxlength="50" placeholder="Aapka Pura Naam" class="mt-4 w-full h-12 px-4 rounded-2xl outline-none font-bold text-sm" style="background:var(--bg);border:1.5px solid var(--line);color:var(--tx)">
+        <div class="mt-3 flex items-center px-4 h-14 gap-2 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--a)]" style="background:var(--bg);border:1.5px solid var(--line)">
           <b style="color:var(--a)">+91</b><span class="w-px h-5" style="background:var(--line)"></span>
-          <input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number (Call/WA ke liye)" class="bg-transparent outline-none flex-1 min-w-0 tracking-wider font-bold text-sm">
+          <input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" class="bg-transparent outline-none flex-1 min-w-0 tracking-wider font-bold">
         </div>
-
-        <label class="mt-3 flex items-start gap-2.5 text-left text-[11px] leading-snug cursor-pointer select-none" style="color:var(--mut)">
-          <input id="consentChk" type="checkbox" checked class="mt-0.5 w-4 h-4 accent-indigo-600 rounded shrink-0">
-          <span>Main <button type="button" id="openPolicyBtn" class="underline font-bold" style="color:var(--a)">Privacy Policy & Terms</button> se sehmat hoon aur property sampark ke liye Naam va Mobile Number save/share karne ki sehmati (Consent) deta/deti hoon.</span>
+        <label class="mt-3 flex items-start gap-2.5 text-left text-[11.5px] leading-snug cursor-pointer select-none" style="color:var(--mut)">
+          <input id="consentChk" type="checkbox" class="mt-0.5 w-4 h-4 accent-indigo-600 rounded shrink-0">
+          <span>Main <button type="button" id="openPolicyBtn" class="underline font-bold" style="color:var(--a)">Privacy Policy & Terms</button> se sehmat hoon aur AwasPatna ko property sampark ke liye mera Naam va Mobile Number save aur share karne ki sehmati (Consent) deta/deti hoon.</span>
         </label>
-
-        <p id="pErr" class="text-xs text-red-500 mt-1.5 min-h-[1rem]"></p>
-
-        <button id="googleLoginBtn" type="button" class="btn w-full !h-13 text-sm mt-1 shadow-md" style="background:#fff;color:#1f2937;border:1.5px solid #d1d5db">
-          <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-          <span>Google se Direct Login Karein (Fast)</span>
-        </button>
-
-        <div class="flex items-center gap-2 my-2.5 text-[10.5px] font-bold" style="color:var(--mut)">
-          <span class="flex-1 h-px" style="background:var(--line)"></span>
-          <span>YA SMS OTP SE</span>
-          <span class="flex-1 h-px" style="background:var(--line)"></span>
-        </div>
-
-        <button id="sendOtp" type="button" class="btn call grad w-full !h-12 text-sm">SMS OTP Bhejein</button>
+        <p id="pErr" class="text-xs text-red-500 mt-2 min-h-[1rem]"></p>
+        <button id="sendOtp" class="btn call grad w-full !h-14 text-lg mt-1">OTP bhejein</button>
       </div>
 
       <div id="s2" class="hidden pt-6">
@@ -200,7 +177,7 @@
         <h3 class="hd font-extrabold text-2xl" style="color:var(--a)">Verified ✓</h3>
         <p class="text-sm mt-1" style="color:var(--mut)">Ab aap owners se connect kar sakte hain.</p>
       </div>
-      <p class="text-[10.5px] mt-3 flex items-center justify-center gap-1" style="color:var(--mut)"><svg class="ic !w-3 !h-3"><use href="#i-shield"/></svg>DPDP Act Compliant · Verified Security</p>
+      <p class="text-[10.5px] mt-4 flex items-center justify-center gap-1" style="color:var(--mut)"><svg class="ic !w-3 !h-3"><use href="#i-shield"/></svg>DPDP Act Compliant · Verified Security</p>
     </div>
   </div>
 </div>
@@ -213,7 +190,7 @@
       <button id="pClose" class="soft w-9 h-9 rounded-full grid place-items-center"><svg class="ic !w-4 !h-4"><use href="#i-x"/></svg></button>
     </div>
 
-    <p class="text-[11px] font-bold mb-1.5" style="color:var(--mut)">PROPERTY PHOTOS (WebP Fast Auto-Compress 16:10)</p>
+    <p class="text-[11px] font-bold mb-1.5" style="color:var(--mut)">PROPERTY PHOTOS (Fixed 16:10 Ratio Auto-Fit)</p>
     <div class="grid grid-cols-2 gap-2.5 mb-3">
       <label class="relative block w-full overflow-hidden rounded-2xl cursor-pointer border-2 border-dashed grid place-items-center text-center" style="aspect-ratio:16/10;border-color:var(--a);background:var(--bg)">
         <input id="imgIn1" type="file" accept="image/*" class="hidden">
@@ -237,7 +214,6 @@
         <input id="pPrice" maxlength="25" placeholder="Kiraya/Dam (jaise ₹4,500)" class="w-full h-12 px-3.5 rounded-2xl font-semibold outline-none" style="background:var(--bg);border:1.5px solid var(--line)">
         <input id="pTags" maxlength="80" placeholder="Features (WiFi, Lift, 24x7 Water)" class="w-full h-12 px-3.5 rounded-2xl font-semibold outline-none" style="background:var(--bg);border:1.5px solid var(--line)">
       </div>
-      <input id="pOwnerPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="Aapka Call/WhatsApp Number (10-digit)" class="w-full h-12 px-3.5 rounded-2xl font-bold outline-none" style="background:var(--bg);border:1.5px solid var(--line)">
       <textarea id="pDesc" maxlength="400" placeholder="Property ke baare mein jankari likhein..." class="w-full h-20 p-3.5 rounded-2xl font-semibold outline-none resize-none" style="background:var(--bg);border:1.5px solid var(--line)"></textarea>
       <label class="flex items-start gap-2 text-left text-[11px] leading-snug cursor-pointer" style="color:var(--mut)">
         <input id="postConsentChk" type="checkbox" checked class="mt-0.5 w-4 h-4 accent-indigo-600 rounded shrink-0">
@@ -270,7 +246,7 @@
       <button id="polClose" class="soft w-8 h-8 rounded-full grid place-items-center"><svg class="ic !w-4 !h-4"><use href="#i-x"/></svg></button>
     </div>
     <div class="overflow-y-auto py-3 text-xs leading-relaxed space-y-2.5" style="color:var(--mut)">
-      <p><b style="color:var(--tx)">1. Data Collection (DPDP Act Compliance):</b> AwasPatna sirf aapka Naam, Email/Mobile Number aur aapke dwara post ki gayi Property details va photos collect karta hai taaki tenants aur property owners aapas mein seedha sampark kar sakein.</p>
+      <p><b style="color:var(--tx)">1. Data Collection (DPDP Act Compliance):</b> AwasPatna sirf aapka Naam, Mobile Number aur aapke dwara post ki gayi Property details va photos collect karta hai taaki tenants aur property owners aapas mein seedha sampark kar sakein.</p>
       <p><b style="color:var(--tx)">2. Purpose & Sharing:</b> Agar aap property post karte hain, to aapka phone number logged-in users ko Call/WhatsApp button ke zariye dikhaya jayega.</p>
       <p><b style="color:var(--tx)">3. Notifications:</b> Aapki permission se hum aapko nayi property listings ke alerts bhejte hain.</p>
       <p><b style="color:var(--tx)">4. User Responsibility:</b> Kisi bhi property ke len-den ya advance payment se pehle khud jagah aur kagazat ki jaanch karein.</p>
@@ -281,6 +257,40 @@
 
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 z-[60] rounded-full px-4 py-2.5 text-xs font-bold text-white opacity-0 pointer-events-none transition-all" style="bottom:7.5rem;background:#14142b"></div>
 
+<!-- 7-SECOND INSTALL POPUP & INSTALL HANDLER SCRIPT -->
+<script>
+  let userDeferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    userDeferredPrompt = e;
+  });
+
+  // Hide the install popup automatically after 7 seconds (7000ms)
+  setTimeout(() => {
+    const p = document.getElementById('userInstallPopup');
+    if (p) {
+      p.style.opacity = '0';
+      p.style.pointerEvents = 'none';
+      setTimeout(() => p.classList.add('hidden'), 300);
+    }
+  }, 7000);
+
+  window.triggerUserInstall = async () => {
+    document.getElementById('userInstallPopup')?.classList.add('hidden');
+    if (userDeferredPrompt) {
+      userDeferredPrompt.prompt();
+      await userDeferredPrompt.userChoice;
+      userDeferredPrompt = null;
+    } else {
+      const t = document.getElementById('toast');
+      if (t) {
+        t.textContent = 'Chrome ke 3-dot menu (⋮) se "Add to Home screen / Install App" dabayein';
+        t.style.opacity = 1;
+        setTimeout(() => t.style.opacity = 0, 3000);
+      }
+    }
+  };
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
